@@ -3,6 +3,7 @@
 -- DROP SCHEMA dragones_y_loyolos;
 
 -- TODO: cambiar variables "tinytext" por tipos más sólidos, refactorizar para mayor limpieza, 
+-- TODO: conectar la velocidad de lanzamiento de los hechizos a las acciones y añadir el sistema de prioridad.
 
 CREATE TABLE Timestep (
 PRIMARY KEY (timestep, subTimestep),
@@ -23,7 +24,7 @@ CREATE TABLE Stats_base (
 	inteligencia SMALLINT,
 	sabiduria SMALLINT,
 	carisma SMALLINT,
-	velocidad SMALLINT
+	velocidad SMALLINT -- Esto quizás lo quitemos y dejemos solo la destreza.
 );
 
 CREATE TABLE Acciones (
@@ -91,7 +92,7 @@ CREATE TABLE Pnj (
 CREATE TABLE Hechizo_base (
  id_hechizo_base VARCHAR(255) PRIMARY KEY,
  nivel SMALLINT,
- tiempo_lanzamiento SMALLINT,
+ prioridadLanzamiento SMALLINT,
  alcance SMALLINT,
  componentes TINYTEXT,
  duracion SMALLINT,
@@ -126,6 +127,7 @@ CREATE TABLE Objeto_base (
  propiedad_arma TINYTEXT,
  danno SMALLINT,
  alcance SMALLINT,
+ prioridadAtaque SMALLINT, -- Nuevo campo para cuando se ataque. 
  
  encantado BOOL,
  
@@ -185,6 +187,9 @@ CREATE TABLE Tiempo_acciones_entidades (
 
  id_entidades INT,
  id_acciones VARCHAR(255),
+ 
+ id_objeto_usado INT NULL,
+ id_hechizo_usado VARCHAR(255) NULL,
 
  objetivoX_1 INT,
  objetivoY_1 INT,
@@ -193,7 +198,10 @@ CREATE TABLE Tiempo_acciones_entidades (
 
  FOREIGN KEY (timestep, subTimestep) REFERENCES Timestep (timestep, subTimestep),
  FOREIGN KEY (id_entidades) REFERENCES Entidades (id_entidades),
- FOREIGN KEY (id_acciones) REFERENCES Acciones(id_acciones)
+ FOREIGN KEY (id_acciones) REFERENCES Acciones(id_acciones),
+ 
+ FOREIGN KEY (id_objeto_usado) REFERENCES Objeto_base(id_objeto_base),
+ FOREIGN KEY (id_hechizo_usado) REFERENCES Hechizo_base(id_hechizo_base)
 );
 
 
