@@ -23,6 +23,7 @@ public class PruebaBaseDatos : MonoBehaviour
         if (!System.IO.File.Exists(filepath)) {
             System.IO.File.Copy(dbPath, filepath);
         }
+        Debug.Log(filepath);
 
         // Abrimos conexión
         var connection = new SQLiteConnection(filepath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);

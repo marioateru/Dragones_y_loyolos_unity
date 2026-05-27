@@ -158,6 +158,15 @@ CREATE TABLE Stats_base_entidades (
  id_entidades INT,
  id_stats_base INT,
  
+ hp INT,
+ ac SMALLINT,
+ fuerza SMALLINT,
+ destreza SMALLINT,
+ constitucion SMALLINT,
+ inteligencia SMALLINT,
+ sabiduria SMALLINT,
+ carisma SMALLINT,
+    
  FOREIGN KEY (timestep, subTimestep) REFERENCES Timestep (timestep, subTimestep),
  FOREIGN KEY (id_entidades) REFERENCES Entidades (id_entidades),
  FOREIGN KEY (id_stats_base) REFERENCES Stats_base(id_stats_base)
