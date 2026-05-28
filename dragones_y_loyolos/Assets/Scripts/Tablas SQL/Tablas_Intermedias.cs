@@ -7,8 +7,6 @@ public class StatsBaseEntidadesSQL {
     public int subTimestep { get; set; }
     public int id_entidades { get; set; }
     public int id_stats_base { get; set; }
-    
-    // Añadimos el estado dinámico de la entidad
     public int hp { get; set; }
     public int ac { get; set; }
     public int fuerza { get; set; }

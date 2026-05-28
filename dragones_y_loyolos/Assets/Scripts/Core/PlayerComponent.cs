@@ -1,7 +1,7 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-[RequireComponent(typeof(TileCollisionChecker))] // Obligamos a que el GameObject tenga el colisionador
+[RequireComponent(typeof(TileCollisionChecker))]
 public class PlayerComponent : Entidad
 {
     private bool esMiTurno = false;
@@ -9,7 +9,7 @@ public class PlayerComponent : Entidad
 
     public override void Awake()
     {
-        base.Awake(); // Llamamos al Awake del padre para que coja el GameManager
+        base.Awake();
         collisionChecker = GetComponent<TileCollisionChecker>();
     }
 
@@ -17,6 +17,7 @@ public class PlayerComponent : Entidad
     {
         if (IsDead()) 
         {
+            // Para que se mantenga en el sitio
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
@@ -39,17 +40,14 @@ public class PlayerComponent : Entidad
 
         if (dx != 0 || dy != 0)
         {
-            // 1. Calculamos a qué coordenada exacta intenta moverse
             int objetivoX = Mathf.RoundToInt(xPos) + dx;
             int objetivoY = Mathf.RoundToInt(yPos) + dy;
 
-            // 2. Le preguntamos al checker si ese Tile está ocupado por un muro
             if (collisionChecker.HayMuro(objetivoX, objetivoY)) 
             {
-                return; // Si hay muro, bloqueamos el proceso y el jugador no pierde su turno
+                return;
             }
 
-            // 3. Si no hay muro, bloqueamos el input y mandamos la acción al GameManager
             esMiTurno = false;
             SubmitAction(Acciones.Moverse, objetivoX, objetivoY);
         }

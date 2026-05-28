@@ -2,8 +2,6 @@ using UnityEngine;
 
 public abstract class Entidad : MonoBehaviour
 {
-    // === CONSTANTES ===
-    // Define el desplazamiento visual para que el sprite encaje en el centro exacto de una celda del Grid.
     protected const float TILE_CENTER_OFFSET = 0.5f; 
 
     [Header("Referencias SQL")]
@@ -47,7 +45,6 @@ public abstract class Entidad : MonoBehaviour
         this.xPos = xInicial;
         this.yPos = yInicial;
         
-        // Aplicamos la constante para la representación visual en el mundo real
         transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, yPos + TILE_CENTER_OFFSET, 0);
         
         Debug.Log($"[Entidad] '{gameObject.name}' materializado en la celda lógica {xPos}, {yPos}.");
@@ -73,21 +70,20 @@ public abstract class Entidad : MonoBehaviour
                 this.xPos = targetX;
                 this.yPos = targetY;
                 
-                // Mantenemos la pureza matemática usando nuestra constante
                 transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, yPos + TILE_CENTER_OFFSET, 0); 
                 Debug.Log($"[Resolución] '{gameObject.name}' se desplazó a ({xPos}, {yPos})");
                 break;
                 
             case Acciones.Atacar:
-                Debug.Log($"[Resolución] '{gameObject.name}' arremetió hacia ({targetX}, {targetY})");
+                Debug.Log($"[Resolución] '{gameObject.name}' atacó hacia ({targetX}, {targetY})");
                 break;
                 
             case Acciones.Defender:
-                Debug.Log($"[Resolución] '{gameObject.name}' levantó su guardia.");
+                Debug.Log($"[Resolución] '{gameObject.name}' se protegió.");
                 break;
                 
             case Acciones.Interactuar:
-                Debug.Log($"[Resolución] '{gameObject.name}' manipuló la casilla ({targetX}, {targetY})");
+                Debug.Log($"[Resolución] '{gameObject.name}' interactuó en ({targetX}, {targetY})");
                 break;
                 
             case Acciones.Consumir:

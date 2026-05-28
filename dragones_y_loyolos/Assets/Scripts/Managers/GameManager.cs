@@ -24,9 +24,6 @@ public class GameManager : MonoBehaviour
 
     private SQLManager sqlManager;
     public List<Entidad> entidadesEnMapa;
-
-    // Colas tácticas. Mantenemos las intenciones temporalmente en RAM porque 
-    // la base de datos es demasiado lenta para grabar el debate de quién ataca primero.
     private List<Entidad> entityQueue = new List<Entidad>();
     private List<AccionEnMemoria> actionQueue = new List<AccionEnMemoria>();
 
@@ -38,10 +35,9 @@ public class GameManager : MonoBehaviour
     {
         sqlManager = GetComponent<SQLManager>();
         
-        // Retomamos la simulación desde el último punto registrado exacto 
-        // para mantener la continuidad de la base de datos.
+        // Continuamos desde donde lo dejamos
         timestepActual = Mathf.Max(1, sqlManager.ObtenerUltimoTimestep()); 
-        Debug.Log($"[GameManager] Despertando mundo en el Timestep: {timestepActual}");
+        Debug.Log($"[GameManager] Iniciando mundo en el Timestep: {timestepActual}");
 
         foreach (var entidad in entidadesEnMapa) {
             sqlManager.CargarDatosDeEntidad(entidad, entidad.id_entidades, timestepActual);
@@ -58,7 +54,7 @@ public class GameManager : MonoBehaviour
                 PrepararColas();
                 break;
             case GameState.EsperandoEleccion:
-                // El control se cede a las entidades (IA o Jugador). El ciclo queda congelado.
+                // Esperamos a que los enemigos y el jugador escojan acción
                 break;
             case GameState.ProcesandoTurno:
                 ProcesarAcciones();
@@ -74,7 +70,7 @@ public class GameManager : MonoBehaviour
         entityQueue.Clear();
         entityQueue.AddRange(entidadesEnMapa);
         
-        // Quien tenga mejores reflejos dicta el orden de declaración, por eso ordenamos por destreza.
+        // Ordenamos por destreza
         entityQueue.Sort((a, b) => b.destreza.CompareTo(a.destreza)); 
 
         indiceEntidadPensando = 0;
@@ -83,6 +79,7 @@ public class GameManager : MonoBehaviour
 
     private void PedirAccionASiguienteEntidad()
     {
+        // Es básicamente un while pero no explícito
         if (indiceEntidadPensando < entityQueue.Count)
         {
             estadoActual = GameState.EsperandoEleccion;
@@ -113,34 +110,31 @@ public class GameManager : MonoBehaviour
 
     private void ProcesarAcciones()
     {
-        Debug.Log("[GameManager] Todas las decisiones tomadas. Iniciando resolución de acciones...");
+        Debug.Log("[GameManager] Iniciando resolución de acciones...");
         
-        // Re-ordenamos la ejecución real. Aquí podrían entrar en juego alteradores mágicos de prioridad.
+        // Ordenamos acciones por prioridad
         actionQueue.Sort((a, b) => b.prioridad.CompareTo(a.prioridad)); 
 
-        // Se resetea el delta de turno para que nadie actúe de forma simultánea a nivel de base de datos.
         subTimestepActual = 0;
 
         foreach (var accion in actionQueue)
         {
-            // Avanzamos el fotograma temporal antes de ejecutar para mantener un orden numérico estricto
             subTimestepActual++;
             accion.subTimestep = subTimestepActual;
             
-            // Delegamos la lógica dura de la acción (mover transform, restar vida, etc) a la propia entidad.
             accion.entidad.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
         }
 
         estadoActual = GameState.GuardandoSQL;
     }
 
+    // Cambiar para volcar en disco en salida de partida, no al finalizar cada turno.
     private void GuardarYLimpiar()
     {
         sqlManager.GuardarHistorialDeAcciones(actionQueue);
         
         actionQueue.Clear();
         
-        // Solo avanzamos el tiempo global cuando todo el mundo ha terminado de moverse y se ha volcado al disco.
         timestepActual++;
         
         estadoActual = GameState.PreparandoTurno;
