@@ -1,5 +1,7 @@
 using UnityEngine;
 
+// WARNING: Este código comprende responsabilidades como gráficos, inaceptable. REFACTORIZAR.
+
 public abstract class Entidad : MonoBehaviour
 {
     protected const float TILE_CENTER_OFFSET = 0.5f; 
@@ -23,6 +25,10 @@ public abstract class Entidad : MonoBehaviour
     [field: SerializeField] public float yPos { get; protected set; }
 
     protected GameManager gameManager;
+
+    // Si está en rango de jugador, se computa
+    public bool isRun {get; protected set;}
+    public bool isHighPriority {get; protected set;}
 
     public virtual void Awake()
     {
@@ -53,6 +59,35 @@ public abstract class Entidad : MonoBehaviour
     public bool IsDead()
     {
         return hp <= 0;
+    }
+
+    public void EstablecerEstadoDeProcesamiento(bool run, bool highPrio)
+    {
+        this.isRun = run;
+        this.isHighPriority = highPrio;
+    }
+
+    // Añade esto en Entidad.cs, por ejemplo debajo de InicializarDatosSQL
+    public void CargarVisuales(string nombreVisual)
+    {
+        // 1. Buscamos el componente Animator en el cascarón genérico
+        Animator anim = GetComponent<Animator>();
+        
+        if (anim != null)
+        {
+            // 2. Cargamos el AnimatorOverrideController dinámicamente desde la carpeta Resources/Animaciones/
+            RuntimeAnimatorController overrideController = Resources.Load<RuntimeAnimatorController>($"Animaciones/{nombreVisual}");
+            
+            if (overrideController != null)
+            {
+                anim.runtimeAnimatorController = overrideController;
+                Debug.Log($"[Visuales] Animaciones de '{nombreVisual}' cargadas con éxito en {gameObject.name}.");
+            }
+            else
+            {
+                Debug.LogWarning($"[Visuales] Falta el asset. Crea el Override Controller en 'Resources/Animaciones/{nombreVisual}'");
+            }
+        }
     }
 
     public abstract void ChooseAction();

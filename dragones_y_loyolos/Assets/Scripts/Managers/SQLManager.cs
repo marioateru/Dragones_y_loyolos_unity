@@ -50,6 +50,50 @@ public class SQLManager : MonoBehaviour
         entidad.InicializarDatosSQL(id_entidad, estadoStats.id_stats_base, estadoStats, posX, posY);
     }
 
+    public int ObtenerArquetipoDeEntidad(int id_entidad, int timestep)
+    {
+        var vinculo = connection.Query<StatsBaseEntidadesSQL>(
+            "SELECT id_stats_base FROM Stats_base_entidades WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
+            id_entidad, timestep).FirstOrDefault();
+
+        if (vinculo != null)
+        {
+            return vinculo.id_stats_base;
+        }
+        
+        Debug.LogWarning($"[SQLManager] No se encontró arquetipo para la entidad {id_entidad}. Se asigna 1 (Jugador) por defecto.");
+        return 1; 
+    }
+
+    // Devuelve una lista con los datos básicos de todas las entidades en una sala concreta
+    public List<EntidadesSalaPropositoContenidoSQL> ObtenerEntidadesEnSala(int idSala, int timestep)
+    {
+        return connection.Query<EntidadesSalaPropositoContenidoSQL>(
+            "SELECT * FROM Entidades_sala_proposito_contenido WHERE id_sala_proposito_contenido = ? AND timestep <= ? GROUP BY id_entidades ORDER BY timestep DESC, subTimestep DESC", 
+            idSala, timestep).ToList();
+    }
+
+    public bool EsJugador(int id_entidad)
+    {
+        var jugador = connection.Query<JugadoresSQL>("SELECT id_entidades FROM Jugadores WHERE id_entidades = ? LIMIT 1", id_entidad).FirstOrDefault();
+        return jugador != null;
+    }
+
+    // Extrae el nombre real ("Goblin Explorador", "Heroe_Principal") para cargar sus assets visuales
+    public string ObtenerNombreEntidad(int id_entidad, bool esJugador)
+    {
+        if (esJugador) 
+        {
+            var jug = connection.Query<JugadoresSQL>("SELECT id_jugadores FROM Jugadores WHERE id_entidades = ?", id_entidad).FirstOrDefault();
+            return jug != null ? jug.id_jugadores : "JugadorBase";
+        } 
+        else 
+        {
+            var mon = connection.Query<MonstruosSQL>("SELECT id_monstruos FROM Monstruos WHERE id_entidades = ?", id_entidad).FirstOrDefault();
+            return mon != null ? mon.id_monstruos : "EnemigoBase";
+        }
+    }
+
     public void GuardarHistorialDeAcciones(List<AccionEnMemoria> colaDeAcciones)
     {
         connection.BeginTransaction();
