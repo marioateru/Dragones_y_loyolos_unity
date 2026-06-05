@@ -13,7 +13,6 @@ public class SQLManager : MonoBehaviour
         string filepath = string.Format("{0}/{1}", Application.persistentDataPath, "dragones_y_loyolos.db");
         
         if (!System.IO.File.Exists(filepath)) {
-            Debug.Log(filepath);
             System.IO.File.Copy(dbPath, filepath);
         }
 
@@ -40,9 +39,10 @@ public class SQLManager : MonoBehaviour
             estadoStats = new StatsBaseEntidadesSQL();
         }
 
+        // CORRECCIÓN: Ya no busca en la Sala 0, busca la posición más reciente sea donde sea
         var posBD = connection.Query<EntidadesSalaPropositoContenidoSQL>(
-            "SELECT Xpos, Ypos FROM Entidades_sala_proposito_contenido WHERE id_entidades = ? AND id_sala_proposito_contenido = 0 ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
-            id_entidad).FirstOrDefault();
+            "SELECT Xpos, Ypos FROM Entidades_sala_proposito_contenido WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
+            id_entidad, timestepInicial).FirstOrDefault();
 
         int posX = posBD != null ? posBD.Xpos : 0;
         int posY = posBD != null ? posBD.Ypos : 0;
@@ -56,21 +56,23 @@ public class SQLManager : MonoBehaviour
             "SELECT id_stats_base FROM Stats_base_entidades WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
             id_entidad, timestep).FirstOrDefault();
 
-        if (vinculo != null)
-        {
-            return vinculo.id_stats_base;
-        }
-        
-        Debug.LogWarning($"[SQLManager] No se encontró arquetipo para la entidad {id_entidad}. Se asigna 1 (Jugador) por defecto.");
-        return 1; 
+        return vinculo != null ? vinculo.id_stats_base : 1; 
     }
 
-    // Devuelve una lista con los datos básicos de todas las entidades en una sala concreta
     public List<EntidadesSalaPropositoContenidoSQL> ObtenerEntidadesEnSala(int idSala, int timestep)
     {
-        return connection.Query<EntidadesSalaPropositoContenidoSQL>(
-            "SELECT * FROM Entidades_sala_proposito_contenido WHERE id_sala_proposito_contenido = ? AND timestep <= ? GROUP BY id_entidades ORDER BY timestep DESC, subTimestep DESC", 
-            idSala, timestep).ToList();
+        // CORRECCIÓN SQL: La subquery ordena primero el tiempo para que el GROUP BY coja la fila más reciente, 
+        // y el HAVING filtra para traer solo a los que su ÚLTIMA posición esté en la sala actual.
+        string query = @"
+            SELECT * FROM (
+                SELECT * FROM Entidades_sala_proposito_contenido 
+                WHERE timestep <= ? 
+                ORDER BY timestep DESC, subTimestep DESC
+            ) 
+            GROUP BY id_entidades 
+            HAVING id_sala_proposito_contenido = ?";
+
+        return connection.Query<EntidadesSalaPropositoContenidoSQL>(query, timestep).ToList();
     }
 
     public bool EsJugador(int id_entidad)
@@ -79,7 +81,6 @@ public class SQLManager : MonoBehaviour
         return jugador != null;
     }
 
-    // Extrae el nombre real ("Goblin Explorador", "Heroe_Principal") para cargar sus assets visuales
     public string ObtenerNombreEntidad(int id_entidad, bool esJugador)
     {
         if (esJugador) 
@@ -94,40 +95,61 @@ public class SQLManager : MonoBehaviour
         }
     }
 
-    public void GuardarHistorialDeAcciones(List<AccionEnMemoria> colaDeAcciones)
+    // CORRECCIÓN: Ahora pide el idSalaActual por parámetro en vez de forzar el 0
+    public void GuardarHistorialDeAcciones(List<AccionEnMemoria> colaDeAcciones, int idSalaActual)
     {
         connection.BeginTransaction();
-        
         try
         {
             foreach (var accion in colaDeAcciones)
             {
-                string queryAccion = @"INSERT INTO Tiempo_acciones_entidades 
-                                 (timestep, subTimestep, id_entidades, id_acciones, objetivoX_1, objetivoY_1) 
-                                 VALUES (?, ?, ?, ?, ?, ?)";
+                string queryAccion = @"INSERT INTO Tiempo_acciones_entidades (timestep, subTimestep, id_entidades, id_acciones, objetivoX_1, objetivoY_1) VALUES (?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryAccion, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.tipoAccion.ToString(), accion.objetivoX, accion.objetivoY);
                 
-                string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido 
-                                 (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) 
-                                 VALUES (?, ?, ?, ?, ?, ?)";
-                connection.Execute(queryPos, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, 0, accion.entidad.xPos, accion.entidad.yPos);
+                string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
+                connection.Execute(queryPos, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, idSalaActual, Mathf.RoundToInt(accion.entidad.xPos), Mathf.RoundToInt(accion.entidad.yPos));
 
-                string queryStats = @"INSERT INTO Stats_base_entidades 
-                                 (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) 
-                                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                connection.Execute(queryStats, 
-                    accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.entidad.id_stats_base,
-                    accion.entidad.hp, accion.entidad.ac, accion.entidad.fuerza, accion.entidad.destreza, 
-                    accion.entidad.constitucion, accion.entidad.inteligencia, accion.entidad.sabiduria, accion.entidad.carisma);
+                string queryStats = @"INSERT INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                connection.Execute(queryStats, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.entidad.id_stats_base, accion.entidad.hp, accion.entidad.ac, accion.entidad.fuerza, accion.entidad.destreza, accion.entidad.constitucion, accion.entidad.inteligencia, accion.entidad.sabiduria, accion.entidad.carisma);
             }
-            
             connection.Commit();
-            Debug.Log("[SQLManager] Datos guardados.");
         }
         catch (System.Exception e)
         {
             connection.Rollback();
             Debug.LogError("[SQLManager] Error al guardar los datos: " + e.Message);
+        }
+    }
+
+    // NUEVO: Movimiento instantáneo entre salas
+    public void MoverEntidadASala(int id_entidad, int id_sala, int destX, int destY, int timestep)
+    {
+        string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
+        connection.Execute(queryPos, timestep, 0, id_entidad, id_sala, destX, destY);
+    }
+
+    // NUEVO: Fotografía de la mazmorra que dejas atrás
+    public void GuardarEstadoMundoActual(List<Entidad> entidades, int idSala, int timestep)
+    {
+        connection.BeginTransaction();
+        try
+        {
+            foreach (var entidad in entidades)
+            {
+                if (EsJugador(entidad.id_entidades)) continue; // El jugador se guarda con MoverEntidadASala
+
+                string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
+                connection.Execute(queryPos, timestep, 0, entidad.id_entidades, idSala, Mathf.RoundToInt(entidad.xPos), Mathf.RoundToInt(entidad.yPos));
+
+                string queryStats = @"INSERT INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                connection.Execute(queryStats, timestep, 0, entidad.id_entidades, entidad.id_stats_base, entidad.hp, entidad.ac, entidad.fuerza, entidad.destreza, entidad.constitucion, entidad.inteligencia, entidad.sabiduria, entidad.carisma);
+            }
+            connection.Commit();
+        }
+        catch (System.Exception e)
+        {
+            connection.Rollback();
+            Debug.LogError("[SQLManager] Error al congelar el estado de la mazmorra: " + e.Message);
         }
     }
 }

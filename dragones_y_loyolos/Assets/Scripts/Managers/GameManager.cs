@@ -1,6 +1,8 @@
 using System.Collections.Generic;
+using Unity.Cinemachine;
 using UnityEngine;
 
+// (Se asume que la clase AccionEnMemoria sigue existiendo aquí u en otro script, no la he borrado)
 public class AccionEnMemoria {
     public int timestep;
     public int subTimestep;
@@ -11,7 +13,6 @@ public class AccionEnMemoria {
     public int prioridad; 
 }
 
-// WARNING: Este código comprende responsabilidades como gráficos, inaceptable. REFACTORIZAR.
 public class GameManager : MonoBehaviour
 {
     private enum GameState { 
@@ -19,15 +20,14 @@ public class GameManager : MonoBehaviour
     }
     private GameState estadoActual = GameState.Inicializando;
 
-    private SQLManager sqlManager;
+    [Header("Control de Cámara")]
+    public CinemachineCamera camaraCinemachine;
     
     [Header("Control del Nivel")]
     public ControladorSala salaActual;
     
     [Header("Cascarones Data-Driven")]
-    [Tooltip("Prefab genérico que tiene PlayerComponent")]
     public Entidad prefabJugador; 
-    [Tooltip("Prefab genérico vacío que tiene EnemyComponent")]
     public Entidad prefabEnemigoGenerico; 
 
     [Header("Rendimiento (Culling Global)")]
@@ -42,6 +42,7 @@ public class GameManager : MonoBehaviour
     private List<AccionEnMemoria> actionQueue = new List<AccionEnMemoria>();
     private List<AccionEnMemoria> historialPendiente = new List<AccionEnMemoria>();
 
+    private SQLManager sqlManager;
     private int timestepActual = 0;
     private int subTimestepActual = 0;
     private int indiceEntidadPensando = 0;
@@ -78,18 +79,29 @@ public class GameManager : MonoBehaviour
     private void GenerarEntidadesDesdeSQL()
     {
         entidadesEnMapa.Clear();
+
+        if (salaActual == null || prefabJugador == null || prefabEnemigoGenerico == null)
+        {
+            Debug.LogError("[GameManager] Faltan referencias en el Inspector (Sala Actual o Cascarones).");
+            return;
+        }
+
         var listaSQL = sqlManager.ObtenerEntidadesEnSala(salaActual.idSalaActual, timestepActual);
 
         foreach (var entidadSQL in listaSQL)
         {
             bool esJugador = sqlManager.EsJugador(entidadSQL.id_entidades);
-            Entidad prefabAInstanciar = esJugador ? prefabJugador : prefabEnemigoGenerico;
 
+            // CORRECCIÓN: Si estamos cargando y el jugador ya existe (porque ha viajado de mapa), lo reutilizamos
+            if (esJugador && jugadorPrincipal != null)
+            {
+                entidadesEnMapa.Add(jugadorPrincipal);
+                continue; 
+            }
+
+            Entidad prefabAInstanciar = esJugador ? prefabJugador : prefabEnemigoGenerico;
             Entidad nuevoObj = Instantiate(prefabAInstanciar);
-            
-            // Extraemos el nombre de la BD para usarlo de ID visual ("Heroe_Principal", "Orco Furioso"...)
-            string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
-            nuevoObj.gameObject.name = nombreVisual + "_" + entidadSQL.id_entidades;
+            nuevoObj.gameObject.name = esJugador ? "Jugador_" + entidadSQL.id_entidades : "Enemigo_" + entidadSQL.id_entidades;
 
             TileCollisionChecker checker = nuevoObj.GetComponent<TileCollisionChecker>();
             if (checker != null && salaActual.tilemapMuros != null)
@@ -97,42 +109,42 @@ public class GameManager : MonoBehaviour
                 checker.AsignarMuros(salaActual.tilemapMuros);
             }
 
-            // Inyectamos el alma (Stats, vida, etc)
             sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
             
-            // Inyectamos la apariencia (El AnimatorOverrideController)
-            nuevoObj.CargarVisuales(nombreVisual); 
+            ComponenteVisual visuales = nuevoObj.GetComponent<ComponenteVisual>();
+            if (visuales != null)
+            {
+                string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
+                visuales.InicializarVisuales(nombreVisual);
+            }
             
             entidadesEnMapa.Add(nuevoObj);
 
-            if (esJugador) jugadorPrincipal = (PlayerComponent)nuevoObj;
+            if (esJugador) 
+            {
+                jugadorPrincipal = (PlayerComponent)nuevoObj;
+                if (camaraCinemachine != null) camaraCinemachine.Follow = jugadorPrincipal.transform;
+            }
         }
     }
 
     private void PrepararColas()
     {
         entityQueue.Clear();
-        
         int pX = Mathf.RoundToInt(jugadorPrincipal.xPos);
         int pY = Mathf.RoundToInt(jugadorPrincipal.yPos);
 
         foreach (Entidad entidad in entidadesEnMapa)
         {
-            // Culling Global Centralizado
             if (entidad is EnemyComponent)
             {
-                // Distancia Matemática Pura de Grid (Chebyshev)
                 int dist = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(entidad.xPos) - pX), Mathf.Abs(Mathf.RoundToInt(entidad.yPos) - pY));
-                
                 bool run = dist <= rangoLowPriority;
                 bool highPrio = dist <= rangoHighPriority;
                 
                 entidad.EstablecerEstadoDeProcesamiento(run, highPrio);
-
-                // Si está fuera del rango de simulación, no contamina la cola
                 if (!run) continue; 
             }
-
             entityQueue.Add(entidad);
         }
         
@@ -183,7 +195,6 @@ public class GameManager : MonoBehaviour
             accion.subTimestep = subTimestepActual;
             accion.entidad.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
         }
-
         estadoActual = GameState.FinalizandoTurno;
     }
 
@@ -201,8 +212,51 @@ public class GameManager : MonoBehaviour
     public void GuardarPartidaEnDisco()
     {
         if (historialPendiente.Count == 0) return;
-        sqlManager.GuardarHistorialDeAcciones(historialPendiente);
+        
+        // CORRECCIÓN: Le pasamos el id de la sala actual para que deje de guardar las cosas en la "0"
+        sqlManager.GuardarHistorialDeAcciones(historialPendiente, salaActual.idSalaActual);
         historialPendiente.Clear();
         Debug.Log($"[GameManager] Partida guardada en disco.");
+    }
+
+    // =================================================================
+    // NUEVO SISTEMA DE VIAJE MODDEABLE (Carga de Mapas en Recursos)
+    // =================================================================
+    public void ViajarAUbicacion(Entidad jugador, int idSalaDestino, int destX, int destY)
+    {
+        GuardarPartidaEnDisco();
+        sqlManager.GuardarEstadoMundoActual(entidadesEnMapa, salaActual.idSalaActual, timestepActual);
+
+        // throw new System.NotImplementedException("El sistema de transición visual está pendiente.");
+
+        foreach (var entidad in entidadesEnMapa)
+        {
+            if (entidad != jugador) Destroy(entidad.gameObject);
+        }
+        entidadesEnMapa.Clear();
+
+        if (salaActual != null) Destroy(salaActual.gameObject);
+
+        // Carga Dinámica orientada a Modding
+        string rutaMapa = $"Mapas/Mazmorra_{idSalaDestino}";
+        ControladorSala nuevaSalaPrefab = Resources.Load<ControladorSala>(rutaMapa);
+
+        if (nuevaSalaPrefab == null)
+        {
+            Debug.LogError($"[GameManager] CRÍTICO: No se encontró el mapa en la carpeta 'Resources/{rutaMapa}'.");
+            return;
+        }
+
+        salaActual = Instantiate(nuevaSalaPrefab);
+
+        sqlManager.MoverEntidadASala(jugador.id_entidades, idSalaDestino, destX, destY, timestepActual);
+        jugador.EjecutarAccion(Acciones.Moverse, destX, destY);
+
+        TileCollisionChecker checker = jugador.GetComponent<TileCollisionChecker>();
+        if (checker != null && salaActual.tilemapMuros != null) checker.AsignarMuros(salaActual.tilemapMuros);
+
+        GenerarEntidadesDesdeSQL();
+        
+        estadoActual = GameState.PreparandoTurno;
     }
 }
