@@ -33,8 +33,8 @@ public class PlayerComponent : Entidad
 
         int dx = 0, dy = 0;
 
-        if (keyboard.wKey.wasPressedThisFrame) dy = 1;
-        else if (keyboard.sKey.wasPressedThisFrame) dy = -1;
+        if (keyboard.wKey.wasPressedThisFrame) dy = -1;
+        else if (keyboard.sKey.wasPressedThisFrame) dy = 1;
         else if (keyboard.aKey.wasPressedThisFrame) dx = -1;
         else if (keyboard.dKey.wasPressedThisFrame) dx = 1;
 
@@ -42,6 +42,17 @@ public class PlayerComponent : Entidad
         {
             int objetivoX = Mathf.RoundToInt(xPos) + dx;
             int objetivoY = Mathf.RoundToInt(yPos) + dy;
+
+            if (gameManager != null && gameManager.salaActual != null)
+            {
+                PuertaMazmorra puerta = gameManager.salaActual.ObtenerPuerta(objetivoX, objetivoY);
+                if (puerta != null)
+                {
+                    esMiTurno = false;
+                    gameManager.ViajarAUbicacion(this, puerta.idSalaDestino, puerta.destinoX, puerta.destinoY);
+                    return;
+                }
+            }
 
             if (collisionChecker.HayMuro(objetivoX, objetivoY)) 
             {

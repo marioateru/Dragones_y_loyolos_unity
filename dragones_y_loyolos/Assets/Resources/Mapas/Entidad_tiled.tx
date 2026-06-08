@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<template>
+ <object name="Entidad" type="Entidad">
+  <properties>
+   <property name="id_entidades" type="int" value="0"/>
+  </properties>
+  <polygon points="0,0 16,0 16,16 0,16"/>
+ </object>
+</template>

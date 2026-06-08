@@ -80,7 +80,8 @@ public abstract class Entidad : MonoBehaviour
                 this.xPos = targetX;
                 this.yPos = targetY;
                 
-                transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, yPos + TILE_CENTER_OFFSET, 0); 
+                ActualizarPosicionVisual();
+
                 Debug.Log($"[Resolución] '{gameObject.name}' se desplazó a ({xPos}, {yPos})");
                 break;
                 
@@ -104,5 +105,10 @@ public abstract class Entidad : MonoBehaviour
                 Debug.LogWarning($"[Entidad] La acción {accion} no está contemplada.");
                 break;
         }
+    }
+
+    private void ActualizarPosicionVisual()
+    {
+        transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0);
     }
 }

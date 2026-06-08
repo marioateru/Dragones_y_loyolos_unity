@@ -1,0 +1,90 @@
+{
+    "activeFile": "mazmorra_1.tmx",
+    "expandedProjectPaths": [
+    ],
+    "file.lastUsedOpenFilter": "All Files (*)",
+    "fileStates": {
+        "Dungeon_tileset.tsx": {
+            "scaleInDock": 1.7468,
+            "scaleInEditor": 1
+        },
+        "dungeon_0.tmx": {
+            "scale": 1.2133,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 182.97205967196902,
+                "y": 185.03255583944616
+            }
+        },
+        "dungeon_2.tmx": {
+            "scale": 2.6575,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 126.81091251175917,
+                "y": 61.9002822201317
+            }
+        },
+        "mazmorra_1.tmx": {
+            "expandedObjectLayers": [
+                5,
+                6
+            ],
+            "scale": 1.5,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 225.66666666666669,
+                "y": -53.666666666666686
+            }
+        },
+        "mazmorra_2.tmx": {
+            "expandedObjectLayers": [
+                5,
+                6
+            ],
+            "scale": 5.5,
+            "selectedLayer": 4,
+            "viewCenter": {
+                "x": 97.54545454545456,
+                "y": -145.9090909090909
+            }
+        },
+        "plantilla.tmx": {
+            "expandedObjectLayers": [
+                9,
+                5
+            ],
+            "scale": 8,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 18.5625,
+                "y": 20.9375
+            }
+        }
+    },
+    "last.imagePath": "/Volumes/PortableSSD/documentos/GitHub/Dragones_y_loyolos_unity/dragones_y_loyolos/Assets/Arte/Tileset",
+    "last.objectTemplatePath": "/Volumes/PortableSSD/documentos/GitHub/Dragones_y_loyolos_unity/dragones_y_loyolos/Assets/Resources/Mapas",
+    "map.fixedSize": false,
+    "map.lastUsedFormat": "tmx",
+    "map.tileHeight": 16,
+    "map.tileWidth": 16,
+    "openFiles": [
+        "Dungeon_tileset.tsx",
+        "plantilla.tmx",
+        "mazmorra_1.tmx"
+    ],
+    "project": "D&L.tiled-project",
+    "property.type": "string",
+    "recentFiles": [
+        "plantilla.tmx",
+        "Dungeon_tileset.tsx",
+        "mazmorra_1.tmx",
+        "mazmorra_2.tmx",
+        "dungeon_2.tmx",
+        "dungeon_0.tmx"
+    ],
+    "tileset.lastUsedFormat": "tsx",
+    "tileset.tileSize": {
+        "height": 16,
+        "width": 16
+    }
+}

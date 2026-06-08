@@ -17,6 +17,9 @@ public class SQLManager : MonoBehaviour
         }
 
         connection = new SQLiteConnection(filepath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
+
+        connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_sala ON Entidades_sala_proposito_contenido (id_sala_proposito_contenido, timestep);");
+        connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_tiempo ON Entidades_sala_proposito_contenido (id_entidades, timestep, subTimestep);");
     }
 
     public int ObtenerUltimoTimestep()
@@ -61,18 +64,18 @@ public class SQLManager : MonoBehaviour
 
     public List<EntidadesSalaPropositoContenidoSQL> ObtenerEntidadesEnSala(int idSala, int timestep)
     {
-        // CORRECCIÓN SQL: La subquery ordena primero el tiempo para que el GROUP BY coja la fila más reciente, 
-        // y el HAVING filtra para traer solo a los que su ÚLTIMA posición esté en la sala actual.
         string query = @"
-            SELECT * FROM (
-                SELECT * FROM Entidades_sala_proposito_contenido 
-                WHERE timestep <= ? 
-                ORDER BY timestep DESC, subTimestep DESC
-            ) 
-            GROUP BY id_entidades 
-            HAVING id_sala_proposito_contenido = ?";
+            SELECT e.* FROM Entidades_sala_proposito_contenido e
+            INNER JOIN (
+                SELECT id_entidades, MAX(timestep * 10000 + subTimestep) as max_time
+                FROM Entidades_sala_proposito_contenido
+                WHERE timestep <= ?
+                GROUP BY id_entidades
+            ) latest ON e.id_entidades = latest.id_entidades 
+            AND (e.timestep * 10000 + e.subTimestep) = latest.max_time
+            WHERE e.id_sala_proposito_contenido = ?";
 
-        return connection.Query<EntidadesSalaPropositoContenidoSQL>(query, timestep).ToList();
+        return connection.Query<EntidadesSalaPropositoContenidoSQL>(query, timestep, idSala).ToList();
     }
 
     public bool EsJugador(int id_entidad)

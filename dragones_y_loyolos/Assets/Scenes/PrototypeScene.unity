@@ -58337,10 +58337,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f62c4ae37bfd74af4936fe1c1973663b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
+  idSalaInicial: 1
   camaraCinemachine: {fileID: 38531200}
-  salaActual: {fileID: 1218451491}
+  salaActual: {fileID: 4868402959879509760, guid: de1e3c2ff207449538ca984e7ccbe9fa, type: 3}
   prefabJugador: {fileID: 9079720327749776205, guid: 432df51d58cce4866bf4658180948f46, type: 3}
   prefabEnemigoGenerico: {fileID: 60726072003821503, guid: d92b6d4064a044bf28f5e516fc25d215, type: 3}
+  drawGizmos: 1
   rangoHighPriority: 8
   rangoLowPriority: 15
   turnosParaAutoguardado: 10

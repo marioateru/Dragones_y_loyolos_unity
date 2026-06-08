@@ -17,14 +17,8 @@ public class TileCollisionChecker : MonoBehaviour
     {
         if (tilemapMuros == null) return false;
 
-        Vector3Int celdaObjetivo = new Vector3Int(targetX, targetY, 0);
+        Vector3Int celdaObjetivo = new Vector3Int(targetX, -targetY - 1, 0);
 
-        if (tilemapMuros.HasTile(celdaObjetivo))
-        {
-            Debug.Log($"[Colisión] Muro detectado en la celda ({targetX}, {targetY}).");
-            return true;
-        }
-        
-        return false;
+        return tilemapMuros.HasTile(celdaObjetivo);
     }
 }

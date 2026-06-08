@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEditor;
 using SuperTiled2Unity.Editor;
 using SuperTiled2Unity;
 using UnityEngine.Tilemaps;
@@ -9,42 +8,70 @@ public class ImportadorMazmorras : CustomTmxImporter
 {
     public override void TmxAssetImported(TmxAssetImportedArgs args)
     {
-        // 1. Obtenemos el GameObject raíz del mapa que ST2U acaba de generar
         GameObject mapaRaiz = args.ImportedSuperMap.gameObject;
-
-        // 2. Leemos las propiedades personalizadas
         SuperCustomProperties propiedades = args.ImportedSuperMap.GetComponent<SuperCustomProperties>();
         
         if (propiedades != null)
         {
-            // CORRECCIÓN 1: Usamos el método nativo de ST2U para buscar la propiedad
             if (propiedades.TryGetCustomProperty("idSala", out CustomProperty propiedadId))
             {
-                // ¡Bingo! Es una mazmorra. Le añadimos el script automáticamente
                 ControladorSala controlador = mapaRaiz.AddComponent<ControladorSala>();
-                
-                // CORRECCIÓN 2: ST2U guarda el valor como string en 'm_Value'. Lo parseamos a Int.
-                if (int.TryParse(propiedadId.m_Value, out int idParseado))
-                {
-                    controlador.idSalaActual = idParseado;
-                }
-                else
-                {
-                    Debug.LogWarning($"[Auto-Importador] Cuidado: La propiedad 'idSala' en '{mapaRaiz.name}' no es un número válido. Se asignará 0 por defecto.");
-                }
+                if (int.TryParse(propiedadId.m_Value, out int idParseado)) controlador.idSalaActual = idParseado;
 
-                // 3. Buscamos automáticamente la capa de colisiones para asignarla
-                Tilemap[] todosLosTilemaps = mapaRaiz.GetComponentsInChildren<Tilemap>();
-                foreach (Tilemap tilemap in todosLosTilemaps)
+                Tilemap[] tilemapsMapa = mapaRaiz.GetComponentsInChildren<Tilemap>();
+                foreach (Tilemap tilemap in tilemapsMapa)
                 {
-                    if (tilemap.gameObject.name == "Walls")
+                    if (tilemap.gameObject.name == "Muros" || tilemap.gameObject.name == "Walls")
                     {
                         controlador.tilemapMuros = tilemap;
                         break;
                     }
                 }
+            }
+        }
 
-                Debug.Log($"[Auto-Importador] El mapa '{mapaRaiz.name}' se configuró automáticamente como la Sala {controlador.idSalaActual}.");
+        SuperObject[] objetosTiled = mapaRaiz.GetComponentsInChildren<SuperObject>();
+        
+        foreach (SuperObject obj in objetosTiled)
+        {
+            if (obj.m_Type == "Puerta" || obj.m_TiledName == "Puerta")
+            {
+                // A) Buscamos la plantilla visual en el disco duro
+                GameObject prefabPuerta = Resources.Load<GameObject>("Prefabs/Puerta_Generica");
+                
+                if (prefabPuerta != null)
+                {
+                    GameObject puertaInstanciada = GameObject.Instantiate(prefabPuerta, obj.transform.position, Quaternion.identity);
+                    
+                    puertaInstanciada.transform.SetParent(obj.transform.parent, true);
+                    //instanciaPuerta.name = "Puerta_A_Sala_Desconocida";
+
+                    PuertaMazmorra puertaScript = puertaInstanciada.GetComponent<PuertaMazmorra>();
+                    SuperCustomProperties propiedadesPuerta = obj.GetComponent<SuperCustomProperties>();
+                    
+                    if (propiedadesPuerta != null)
+                    {
+                        if (propiedadesPuerta.TryGetCustomProperty("idSalaDestino", out CustomProperty pSala))
+                            if (int.TryParse(pSala.m_Value, out int val)) puertaScript.idSalaDestino = val;
+
+                        if (propiedadesPuerta.TryGetCustomProperty("destinoX", out CustomProperty pX))
+                            if (int.TryParse(pX.m_Value, out int val)) puertaScript.destinoX = val;
+
+                        if (propiedadesPuerta.TryGetCustomProperty("destinoY", out CustomProperty pY))
+                            if (int.TryParse(pY.m_Value, out int val)) puertaScript.destinoY = val;
+                            
+                        puertaInstanciada.name = $"Puerta_A_Sala_{puertaScript.idSalaDestino}";
+                    }
+                    
+                    // D) Destruimos el cascarón vacío e invisible que había generado Tiled
+                    GameObject.DestroyImmediate(obj.gameObject);
+                    
+                    Debug.Log($"[Auto-Importador] Puerta Visual instanciada hacia Sala {puertaScript.idSalaDestino}.");
+                }
+                else
+                {
+                    Debug.LogError("[Auto-Importador] CRÍTICO: No se ha encontrado el prefab de la puerta en 'Resources/Prefabs/Puerta_Generica'.");
+                }
             }
         }
     }
