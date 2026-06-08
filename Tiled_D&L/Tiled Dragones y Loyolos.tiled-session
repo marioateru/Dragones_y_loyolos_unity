@@ -3,8 +3,40 @@
     "expandedProjectPaths": [
     ],
     "fileStates": {
+        "/Volumes/PortableSSD/documentos/GitHub/Dragones_y_loyolos_unity/dragones_y_loyolos/Assets/Resources/Mapas/Dungeon.tsx": {
+            "scaleInDock": 1
+        },
+        "/Volumes/PortableSSD/documentos/GitHub/Dragones_y_loyolos_unity/dragones_y_loyolos/Assets/Resources/Mapas/dungeon_test.tmx": {
+            "scale": 3.5565624999999996,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 159.9859414814164,
+                "y": 79.99297074070822
+            }
+        },
+        "Dungeon.tsx": {
+            "scaleInDock": 2.0409,
+            "scaleInEditor": 3
+        },
+        "dungeon_1.tmx": {
+            "scale": 1,
+            "selectedLayer": 1,
+            "viewCenter": {
+                "x": 117,
+                "y": -120.5
+            }
+        },
+        "dungeon_test.tmx": {
+            "scale": 3.15,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 144.1269841269841,
+                "y": 110.63492063492066
+            }
+        }
     },
     "last.imagePath": "/Volumes/PortableSSD/documentos/GitHub/Dragones_y_loyolos_unity/dragones_y_loyolos/Assets/Arte/Tileset",
+    "map.fixedSize": false,
     "map.height": 15,
     "map.lastUsedFormat": "tmx",
     "map.tileHeight": 16,
@@ -15,6 +47,10 @@
     "project": "Tiled Dragones y Loyolos.tiled-project",
     "property.type": "int",
     "recentFiles": [
+        "dungeon_test.tmx",
+        "dungeon_1.tmx",
+        "Dungeon.tsx",
+        "/Volumes/PortableSSD/documentos/GitHub/Dragones_y_loyolos_unity/dragones_y_loyolos/Assets/Resources/Mapas/dungeon_test.tmx"
     ],
     "tileset.lastUsedFormat": "tsx",
     "tileset.tileSize": {
