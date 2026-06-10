@@ -20,7 +20,6 @@ public class GameManager : MonoBehaviour
     private GameState estadoActual = GameState.Inicializando;
 
     [Header("Sala inicial")]
-    [Tooltip("El ID de la sala donde comenzará el juego.")]
     public int idSalaInicial = 0;
 
     [Header("Cámara")]
@@ -68,44 +67,23 @@ public class GameManager : MonoBehaviour
     {
         switch (estadoActual)
         {
-            case GameState.PreparandoTurno: 
-                PrepararColas(); 
-                break;
-
-            case GameState.EsperandoEleccion: 
-                break;
-
-            case GameState.AvanzandoCola: 
-                PedirAccionASiguienteEntidad(); 
-                break; // Nuevo
-
-            case GameState.ProcesandoTurno: 
-                ProcesarAcciones(); 
-                break;
-
-            case GameState.FinalizandoTurno: 
-                LimpiarYComprobarGuardado(); 
-                break;
+            case GameState.PreparandoTurno: PrepararColas(); break;
+            case GameState.EsperandoEleccion: break;
+            case GameState.AvanzandoCola: PedirAccionASiguienteEntidad(); break;
+            case GameState.ProcesandoTurno: ProcesarAcciones(); break;
+            case GameState.FinalizandoTurno: LimpiarYComprobarGuardado(); break;
         }
     }
 
     private void CargarSalaInicial()
     {
         ControladorSala mapaResidual = FindFirstObjectByType<ControladorSala>();
-        if (mapaResidual != null)
-        {
-            Destroy(mapaResidual.gameObject);
-        }
+        if (mapaResidual != null) Destroy(mapaResidual.gameObject);
 
         string rutaMapa = $"Mapas/Mazmorra_{idSalaInicial}";
         ControladorSala prefabSala = Resources.Load<ControladorSala>(rutaMapa);
 
-        if (prefabSala == null)
-        {
-            Debug.LogError($"[GameManager] Error Crítico: No se encontró el mapa inicial en '{rutaMapa}'.");
-            return;
-        }
-
+        if (prefabSala == null) return;
         salaActual = Instantiate(prefabSala, new Vector3(0, 1, 0), Quaternion.identity);
     }
 
@@ -113,21 +91,7 @@ public class GameManager : MonoBehaviour
     {
         entidadesEnMapa.Clear();
 
-        if (salaActual == null)
-        {
-            Debug.LogError("[GameManager] Falta referencia de sala actual.");
-            return;
-        }
-        if (prefabJugador == null)
-        {
-            Debug.LogError("[GameManager] Falta referencia de prefab jugador.");
-            return;
-        }
-        if (prefabEnemigoGenerico == null)
-        {
-            Debug.LogError("[GameManager] Falta referencia de prefab enemigo.");
-            return;
-        }
+        if (salaActual == null || prefabJugador == null || prefabEnemigoGenerico == null) return;
 
         var listaSQL = sqlManager.ObtenerEntidadesEnSala(salaActual.idSalaActual, timestepActual);
 
@@ -146,10 +110,7 @@ public class GameManager : MonoBehaviour
             nuevoObj.gameObject.name = esJugador ? "Jugador_" + entidadSQL.id_entidades : "Enemigo_" + entidadSQL.id_entidades;
 
             TileCollisionChecker checker = nuevoObj.GetComponent<TileCollisionChecker>();
-            if (checker != null && salaActual.tilemapMuros != null)
-            {
-                checker.AsignarMuros(salaActual.tilemapMuros);
-            }
+            if (checker != null && salaActual.tilemapMuros != null) checker.AsignarMuros(salaActual.tilemapMuros);
 
             sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
             
@@ -168,8 +129,7 @@ public class GameManager : MonoBehaviour
                 if (camaraCinemachine != null) 
                 {
                     camaraCinemachine.Follow = jugadorPrincipal.transform;
-                    // Forzamos a Cinemachine a cortar el suavizado y teletransportarse en este frame
-                    camaraCinemachine.PreviousStateIsValid = false; 
+                    camaraCinemachine.PreviousStateIsValid = false;
                     camaraCinemachine.transform.position = new Vector3(jugadorPrincipal.transform.position.x, jugadorPrincipal.transform.position.y, camaraCinemachine.transform.position.z);
                 }
             }
@@ -179,18 +139,12 @@ public class GameManager : MonoBehaviour
     private void PrepararColas()
     {
         entityQueue.Clear();
-        
-        int pX = 0;
-        int pY = 0;
+        int pX = 0, pY = 0;
 
         if (jugadorPrincipal != null)
         {
             pX = Mathf.RoundToInt(jugadorPrincipal.xPos);
             pY = Mathf.RoundToInt(jugadorPrincipal.yPos);
-        }
-        else
-        {
-            Debug.LogWarning("[GameManager] No hay Jugador en el mapa.");
         }
 
         foreach (Entidad entidad in entidadesEnMapa)
@@ -251,6 +205,9 @@ public class GameManager : MonoBehaviour
 
         foreach (var accion in actionQueue)
         {
+            // Si el jugador no está en la sala, computar el turno es redundante.
+            if (salaActual == null) break;
+
             subTimestepActual++;
             accion.subTimestep = subTimestepActual;
             accion.entidad.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
@@ -275,7 +232,6 @@ public class GameManager : MonoBehaviour
         
         sqlManager.GuardarHistorialDeAcciones(historialPendiente, salaActual.idSalaActual);
         historialPendiente.Clear();
-        Debug.Log($"[GameManager] Partida guardada en disco.");
     }
 
     public void ViajarAUbicacion(Entidad jugador, int idSalaDestino, int destX, int destY)
@@ -297,11 +253,7 @@ public class GameManager : MonoBehaviour
         string rutaMapa = $"Mapas/Mazmorra_{idSalaDestino}";
         ControladorSala nuevaSalaPrefab = Resources.Load<ControladorSala>(rutaMapa);
 
-        if (nuevaSalaPrefab == null)
-        {
-            Debug.LogError($"[GameManager] No se encontró el mapa en la carpeta 'Resources/{rutaMapa}'.");
-            return;
-        }
+        if (nuevaSalaPrefab == null) return;
 
         salaActual = Instantiate(nuevaSalaPrefab, new Vector3(0, 1, 0), Quaternion.identity);
 
@@ -321,9 +273,27 @@ public class GameManager : MonoBehaviour
         estadoActual = GameState.PreparandoTurno;
     }
 
-    // private void DrawDistanceGizmos (bool isAllowedToDraw)
-    // {
-    //     Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoHighPriority);
-    //     Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoLowPriority);
-    // }
+    public Entidad ObtenerEntidadEnCasilla(int x, int y)
+    {
+        foreach (Entidad entidad in entidadesEnMapa)
+        {
+            if (Mathf.RoundToInt(entidad.xPos) == x && Mathf.RoundToInt(entidad.yPos) == y && !entidad.IsDead())
+            {
+                return entidad;
+            }
+        }
+        return null;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!drawGizmos || jugadorPrincipal == null) return;
+
+        Gizmos.color = new Color(1f, 0f, 0f, 0.3f); // Rojo translúcido
+        Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoHighPriority);
+        Gizmos.DrawSphere(jugadorPrincipal.transform.position, 0.1f);
+
+        Gizmos.color = new Color(1f, 1f, 0f, 0.15f); // Amarillo muy translúcido
+        Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoLowPriority);
+    }
 }

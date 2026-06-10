@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="6">
  <properties>
   <property name="idSala" type="int" value="2"/>
  </properties>
@@ -193,7 +193,7 @@
   </data>
  </layer>
  <objectgroup color="#00d900" id="6" name="Entidades">
-  <object id="2" template="Entidad_tiled.tx" x="144" y="-160">
+  <object id="5" template="Entidad_tiled.tx" x="152" y="-168">
    <properties>
     <property name="id_entidades" type="int" value="2"/>
    </properties>
@@ -348,12 +348,11 @@
   </data>
  </layer>
  <objectgroup color="#e541e6" id="5" name="Puertas">
-  <object id="1" template="Puerta_tiled.tx" x="48" y="-192">
+  <object id="4" template="Puerta_tiled.tx" x="56" y="-184">
    <properties>
     <property name="destinoX" type="int" value="9"/>
     <property name="destinoY" type="int" value="-3"/>
     <property name="idSalaDestino" type="int" value="1"/>
-    <property name="unity:prefab" value="Assets/Resources/Prefabs/Puerta_generica.prefab"/>
    </properties>
   </object>
  </objectgroup>

@@ -36,7 +36,6 @@ public class ImportadorMazmorras : CustomTmxImporter
         {
             if (obj.m_Type == "Puerta" || obj.m_TiledName == "Puerta")
             {
-                // A) Buscamos la plantilla visual en el disco duro
                 GameObject prefabPuerta = Resources.Load<GameObject>("Prefabs/Puerta_Generica");
                 
                 if (prefabPuerta != null)
@@ -44,7 +43,6 @@ public class ImportadorMazmorras : CustomTmxImporter
                     GameObject puertaInstanciada = GameObject.Instantiate(prefabPuerta, obj.transform.position, Quaternion.identity);
                     
                     puertaInstanciada.transform.SetParent(obj.transform.parent, true);
-                    //instanciaPuerta.name = "Puerta_A_Sala_Desconocida";
 
                     PuertaMazmorra puertaScript = puertaInstanciada.GetComponent<PuertaMazmorra>();
                     SuperCustomProperties propiedadesPuerta = obj.GetComponent<SuperCustomProperties>();
@@ -63,7 +61,6 @@ public class ImportadorMazmorras : CustomTmxImporter
                         puertaInstanciada.name = $"Puerta_A_Sala_{puertaScript.idSalaDestino}";
                     }
                     
-                    // D) Destruimos el cascarón vacío e invisible que había generado Tiled
                     GameObject.DestroyImmediate(obj.gameObject);
                     
                     Debug.Log($"[Auto-Importador] Puerta Visual instanciada hacia Sala {puertaScript.idSalaDestino}.");

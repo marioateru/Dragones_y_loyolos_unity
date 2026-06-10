@@ -4,6 +4,6 @@
   <properties>
    <property name="id_entidades" type="int" value="0"/>
   </properties>
-  <polygon points="0,0 16,0 16,16 0,16"/>
+  <point/>
  </object>
 </template>

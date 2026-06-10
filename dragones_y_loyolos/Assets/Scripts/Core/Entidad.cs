@@ -49,7 +49,7 @@ public abstract class Entidad : MonoBehaviour
         this.xPos = xInicial;
         this.yPos = yInicial;
         
-        transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, yPos + TILE_CENTER_OFFSET, 0);
+        ActualizarPosicionVisual();
         
         Debug.Log($"[Entidad] '{gameObject.name}' materializado en la celda lógica {xPos}, {yPos}.");
     }
@@ -109,6 +109,6 @@ public abstract class Entidad : MonoBehaviour
 
     private void ActualizarPosicionVisual()
     {
-        transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0);
+        transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, -yPos - TILE_CENTER_OFFSET, 0);
     }
 }

@@ -17,7 +17,6 @@ public class PlayerComponent : Entidad
     {
         if (IsDead()) 
         {
-            // Para que se mantenga en el sitio
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
@@ -45,18 +44,30 @@ public class PlayerComponent : Entidad
 
             if (gameManager != null && gameManager.salaActual != null)
             {
-                PuertaMazmorra puerta = gameManager.salaActual.ObtenerPuerta(objetivoX, objetivoY);
-                if (puerta != null)
+                PuertaMazmorra puertaEnObjetivo = gameManager.salaActual.ObtenerPuerta(objetivoX, objetivoY);
+                if (puertaEnObjetivo != null)
                 {
                     esMiTurno = false;
-                    gameManager.ViajarAUbicacion(this, puerta.idSalaDestino, puerta.destinoX, puerta.destinoY);
+                    SubmitAction(Acciones.Moverse, objetivoX, objetivoY);
+                    gameManager.ViajarAUbicacion(this, puertaEnObjetivo.idSalaDestino, puertaEnObjetivo.destinoX, puertaEnObjetivo.destinoY);
                     return;
                 }
             }
 
             if (collisionChecker.HayMuro(objetivoX, objetivoY)) 
             {
-                return;
+                Debug.Log("No puedes moverte, hay un muro en medio.");
+                return; 
+            }
+
+            if (gameManager != null)
+            {
+                Entidad entidadBloqueante = gameManager.ObtenerEntidadEnCasilla(objetivoX, objetivoY);
+                if (entidadBloqueante != null)
+                {
+                    Debug.Log($"No puedes moverte, hay otra entidad ({entidadBloqueante.gameObject.name}) en medio.");
+                    return; 
+                }
             }
 
             esMiTurno = false;

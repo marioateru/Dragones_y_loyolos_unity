@@ -1,10 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="3">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="7">
  <properties>
   <property name="idSala" type="int" value="1"/>
  </properties>
  <tileset firstgid="1" source="Dungeon_tileset.tsx"/>
- <layer id="2" name="Background" width="30" height="20" offsetx="0" offsety="-1">
+ <layer id="2" name="Background" width="30" height="20" offsetx="0" offsety="1">
   <data encoding="csv">
    <chunk x="-16" y="-16" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -170,7 +170,7 @@
 </chunk>
   </data>
  </layer>
- <layer id="3" name="Background_deco" width="30" height="20" offsetx="0" offsety="-1">
+ <layer id="3" name="Background_deco" width="30" height="20" offsetx="0" offsety="1">
   <data encoding="csv">
    <chunk x="-16" y="-16" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -337,13 +337,13 @@
   </data>
  </layer>
  <objectgroup color="#00cf00" id="6" name="Entidades" class="Entidad" offsetx="0" offsety="-1">
-  <object id="2" template="Entidad_tiled.tx" x="64" y="-32">
+  <object id="5" template="Entidad_tiled.tx" x="72" y="-24">
    <properties>
     <property name="id_entidades" type="int" value="1"/>
    </properties>
   </object>
  </objectgroup>
- <layer id="4" name="Walls" width="30" height="20" offsetx="0" offsety="-1">
+ <layer id="4" name="Walls" width="30" height="20" offsetx="0" offsety="1">
   <data encoding="csv">
    <chunk x="-16" y="-16" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -510,16 +510,15 @@
   </data>
  </layer>
  <objectgroup color="#a519be" id="5" name="Puertas" class="Puerta" offsetx="0" offsety="-1">
-  <object id="1" template="Puerta_tiled.tx" x="144" y="-64">
+  <object id="6" template="Puerta_tiled.tx" x="152" y="-56">
    <properties>
-    <property name="destinoX" type="int" value="4"/>
+    <property name="destinoX" type="int" value="3"/>
     <property name="destinoY" type="int" value="-11"/>
     <property name="idSalaDestino" type="int" value="2"/>
-    <property name="unity:prefab" value="Assets/Resources/Prefabs/Puerta_generica.prefab"/>
    </properties>
   </object>
  </objectgroup>
- <layer id="1" name="Frontground" width="30" height="20" offsetx="0" offsety="-1">
+ <layer id="1" name="Frontground" width="30" height="20" offsetx="0" offsety="1">
   <data encoding="csv"/>
  </layer>
 </map>

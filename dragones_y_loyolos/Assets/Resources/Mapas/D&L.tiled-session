@@ -29,11 +29,11 @@
                 5,
                 6
             ],
-            "scale": 1.5,
+            "scale": 0.5,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 225.66666666666669,
-                "y": -53.666666666666686
+                "x": 331,
+                "y": 395
             }
         },
         "mazmorra_2.tmx": {
@@ -44,8 +44,8 @@
             "scale": 5.5,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 97.54545454545456,
-                "y": -145.9090909090909
+                "x": 93.36363636363636,
+                "y": -129.9090909090909
             }
         },
         "plantilla.tmx": {
@@ -53,11 +53,11 @@
                 9,
                 5
             ],
-            "scale": 8,
+            "scale": 3,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 18.5625,
-                "y": 20.9375
+                "x": 89.83333333333334,
+                "y": 82.83333333333331
             }
         }
     },
@@ -69,16 +69,17 @@
     "map.tileWidth": 16,
     "openFiles": [
         "Dungeon_tileset.tsx",
-        "plantilla.tmx",
-        "mazmorra_1.tmx"
-    ],
-    "project": "D&L.tiled-project",
-    "property.type": "string",
-    "recentFiles": [
-        "plantilla.tmx",
-        "Dungeon_tileset.tsx",
         "mazmorra_1.tmx",
         "mazmorra_2.tmx",
+        "plantilla.tmx"
+    ],
+    "project": "D&L.tiled-project",
+    "property.type": "int",
+    "recentFiles": [
+        "Dungeon_tileset.tsx",
+        "plantilla.tmx",
+        "mazmorra_2.tmx",
+        "mazmorra_1.tmx",
         "dungeon_2.tmx",
         "dungeon_0.tmx"
     ],

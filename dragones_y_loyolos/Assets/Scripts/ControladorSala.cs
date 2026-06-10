@@ -6,7 +6,7 @@ public class ControladorSala : MonoBehaviour
 {
     public int idSalaActual;
     public Tilemap tilemapMuros;
-    private Dictionary<Vector2Int, PuertaMazmorra> puertas = new Dictionary<Vector2Int, PuertaMazmorra>();
+    [SerializeField] private Dictionary<Vector2Int, PuertaMazmorra> puertas = new Dictionary<Vector2Int, PuertaMazmorra>();
 
     public void RegistrarPuerta(int x, int y, PuertaMazmorra puerta)
     {

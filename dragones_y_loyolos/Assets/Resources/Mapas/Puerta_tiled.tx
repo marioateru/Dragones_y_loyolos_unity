@@ -5,7 +5,8 @@
    <property name="destinoX" type="int" value="0"/>
    <property name="destinoY" type="int" value="0"/>
    <property name="idSalaDestino" type="int" value="0"/>
+   <property name="unity:prefab" value="Assets/Resources/Prefabs/Puerta_generica.prefab"/>
   </properties>
-  <polygon points="0,0 0,16 16,16 16,0"/>
+  <point/>
  </object>
 </template>
