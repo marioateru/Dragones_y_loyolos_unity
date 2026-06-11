@@ -67,7 +67,7 @@ public class ImportadorMazmorras : CustomTmxImporter
                 }
                 else
                 {
-                    Debug.LogError("[Auto-Importador] CRÍTICO: No se ha encontrado el prefab de la puerta en 'Resources/Prefabs/Puerta_Generica'.");
+                    Debug.LogError("[Auto-Importador] No se ha encontrado el prefab de la puerta en 'Resources/Prefabs/Puerta_Generica'.");
                 }
             }
         }

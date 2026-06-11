@@ -1,10 +1,8 @@
-using System.Collections.Generic;
 using UnityEngine;
+using System.Collections.Generic;
 
 public abstract class Entidad : MonoBehaviour
 {
-    protected const float TILE_CENTER_OFFSET = 0.5f; 
-
     [Header("Referencias SQL")]
     [field: SerializeField] public int id_entidades { get; private set; } 
     [field: SerializeField] public int id_stats_base { get; private set; } 
@@ -18,21 +16,18 @@ public abstract class Entidad : MonoBehaviour
     [field: SerializeField] public int inteligencia { get; private set; }
     [field: SerializeField] public int sabiduria { get; private set; }
     [field: SerializeField] public int carisma { get; private set; }
-    [field: SerializeField] public int velocidad { get; protected set; } = 6;
+    [field: SerializeField] public int velocidad { get; protected set; } = 6; 
 
     [Header("Posición Tilemap")]
     [field: SerializeField] public float xPos { get; protected set; }
     [field: SerializeField] public float yPos { get; protected set; }
 
-    protected GameManager gameManager;
     public bool estaDefendido { get; set; } = false;
+    public List<Acciones> accionesPermitidas = new List<Acciones>();
 
-    // Si está en rango de jugador, se computa
+    protected GameManager gameManager;
     public bool isRun {get; protected set;}
     public bool isHighPriority {get; protected set;}
-
-    [Header("Acciones")]
-    public List<Acciones> accionesPermitidas = new List<Acciones>() { Acciones.Moverse, Acciones.Atacar, Acciones.Defender, Acciones.Interactuar };
 
     public virtual void Awake()
     {
@@ -54,16 +49,10 @@ public abstract class Entidad : MonoBehaviour
         
         this.xPos = xInicial;
         this.yPos = yInicial;
-        
         ActualizarPosicionVisual();
-        
-        Debug.Log($"[Entidad] '{gameObject.name}' materializado en la celda lógica {xPos}, {yPos}.");
     }
 
-    public bool IsDead()
-    {
-        return hp <= 0;
-    }
+    public bool IsDead() => hp <= 0;
 
     public void EstablecerEstadoDeProcesamiento(bool run, bool highPrio)
     {
@@ -98,20 +87,14 @@ public abstract class Entidad : MonoBehaviour
 
                     if (tiradaAtaque >= objetivoAtaque.ac)
                     {
-                        int dannoTotal = DnD_Rules.LanzarDados(1, 4) + fuerza; // TODO: Armas
-                        Debug.Log($"<color=orange>[Combate]</color> {gameObject.name} acierta a {objetivoAtaque.gameObject.name} (Tirada: {d20} + {fuerza} = {tiradaAtaque} vs AC {objetivoAtaque.ac}). Daño: {dannoTotal}");
+                        int dannoTotal = DnD_Rules.LanzarDados(1, 4) + fuerza;
                         objetivoAtaque.RecibirInteraccion(this, Acciones.Atacar, dannoTotal);
-                    }
-                    else
-                    {
-                        Debug.Log($"<color=gray>[Combate]</color> {gameObject.name} falla contra {objetivoAtaque.gameObject.name} (Tirada: {tiradaAtaque} vs AC {objetivoAtaque.ac}).");
                     }
                 }
                 break;
 
             case Acciones.Defender:
                 this.estaDefendido = true;
-                Debug.Log($"<color=blue>[Defensa]</color> {gameObject.name} adopta una postura defensiva.");
                 break;
 
             case Acciones.Interactuar:
@@ -126,31 +109,21 @@ public abstract class Entidad : MonoBehaviour
         }
     }
 
-    // El receptor sufre las consecuencias
     public virtual void RecibirInteraccion(Entidad origen, Acciones tipoInteraccion, int valorData = 0)
     {
-        switch (tipoInteraccion)
+        if (tipoInteraccion == Acciones.Atacar)
         {
-            case Acciones.Atacar:
-                this.hp -= valorData;
-                break;
-
-            case Acciones.Defender:
-                this.estaDefendido = true;
-                break;
-
-            case Acciones.Consumir:
-                this.hp += valorData;
-                break;
-
-            case Acciones.Interactuar:
-                Debug.Log($"(Por implementar) El {gameObject.name} te mira mal.");
-                break;
+            this.hp -= valorData;
+            if (IsDead()) gameObject.SetActive(false);
+        }
+        else if (tipoInteraccion == Acciones.Consumir)
+        {
+            this.hp += valorData;
         }
     }
 
     private void ActualizarPosicionVisual()
     {
-        transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, -yPos - TILE_CENTER_OFFSET, 0);
+        transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0);
     }
 }

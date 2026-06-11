@@ -9,18 +9,20 @@ public class GridInteractionUI : MonoBehaviour
     public GameObject cursorPrefabAnimado; 
     public Material materialLinea;
 
-    [Header("Referencias UI (Canvas)")]
-    public GameObject panelMenuUI; 
-    public Transform contenedorBotones; 
-    public GameObject botonPlantilla; 
+    [Header("Referencias UI (Prefabricados)")]
+    public Canvas canvasPrincipal; 
+    public GameObject prefabMenuContenedor; 
+    public GameObject prefabBoton; 
 
     private GameObject instanciaCursor;
     private LineRenderer lineaRuta;
-    private List<GameObject> botonesInstanciados = new List<GameObject>();
+    
+    private GameObject menuInstanciado; 
+    private Transform contenedorBotonesInstanciado;
+    private List<GameObject> poolBotones = new List<GameObject>();
 
     public void Inicializar()
     {
-        // 1. SALVAVIDAS: Si no hay EventSystem, los botones de Unity NO FUNCIONAN. Lo creamos.
         if (UnityEngine.EventSystems.EventSystem.current == null)
         {
             GameObject evtObj = new GameObject("EventSystem_GeneradoAutomaticamente");
@@ -48,8 +50,14 @@ public class GridInteractionUI : MonoBehaviour
             lineaRuta.gameObject.SetActive(false);
         }
 
-        if (botonPlantilla != null) botonPlantilla.SetActive(false); 
-        if (panelMenuUI != null) panelMenuUI.SetActive(false);
+        if (canvasPrincipal != null && prefabMenuContenedor != null)
+        {
+            menuInstanciado = Instantiate(prefabMenuContenedor, canvasPrincipal.transform);
+            menuInstanciado.SetActive(false);
+            
+            var layout = menuInstanciado.GetComponentInChildren<VerticalLayoutGroup>();
+            contenedorBotonesInstanciado = layout != null ? layout.transform : menuInstanciado.transform;
+        }
     }
 
     public void ActivarSeleccionIzquierda(int x, int y, bool esInvalido)
@@ -57,12 +65,12 @@ public class GridInteractionUI : MonoBehaviour
         if (instanciaCursor != null)
         {
             instanciaCursor.SetActive(true);
-            instanciaCursor.transform.position = new Vector3(x + 0.5f, -y + 0.5f, 0f);
+            instanciaCursor.transform.position = new Vector3(x + 0.5f, -y - 0.5f, 0f);
             SpriteRenderer sr = instanciaCursor.GetComponent<SpriteRenderer>();
             if (sr != null) sr.color = esInvalido ? Color.red : Color.white;
         }
         if (lineaRuta) lineaRuta.gameObject.SetActive(false);
-        if (panelMenuUI) panelMenuUI.SetActive(false);
+        OcultarMenu();
     }
 
     public void ActivarMenuDerecho(int x, int y, Vector2 origenVisual, List<Acciones> acciones, bool esInvalido, System.Action<Acciones> callback)
@@ -70,7 +78,7 @@ public class GridInteractionUI : MonoBehaviour
         if (instanciaCursor != null)
         {
             instanciaCursor.SetActive(true);
-            instanciaCursor.transform.position = new Vector3(x + 0.5f, -y + 0.5f, 0f);
+            instanciaCursor.transform.position = new Vector3(x + 0.5f, -y - 0.5f, 0f);
             SpriteRenderer sr = instanciaCursor.GetComponent<SpriteRenderer>();
             if (sr != null) sr.color = esInvalido ? Color.red : Color.white;
         }
@@ -79,59 +87,53 @@ public class GridInteractionUI : MonoBehaviour
         {
             lineaRuta.gameObject.SetActive(true);
             lineaRuta.SetPosition(0, new Vector3(origenVisual.x, origenVisual.y, 0f));
-            lineaRuta.SetPosition(1, new Vector3(x + 0.5f, -y + 0.5f, 0f));
+            lineaRuta.SetPosition(1, new Vector3(x + 0.5f, -y - 0.5f, 0f));
             lineaRuta.startColor = esInvalido ? Color.red : Color.white;
             lineaRuta.endColor = esInvalido ? Color.red : Color.white;
         }
 
-        if (panelMenuUI == null || botonPlantilla == null) return;
+        if (menuInstanciado == null || prefabBoton == null) return;
 
-        // 2. POSICIONAMIENTO PERFECTO: Da igual cómo tengas tu Canvas configurado. Esto lo clava al ratón.
-        panelMenuUI.SetActive(true);
-        Canvas canvasRaiz = panelMenuUI.GetComponentInParent<Canvas>();
-        RectTransform panelRect = panelMenuUI.GetComponent<RectTransform>();
-        panelRect.pivot = new Vector2(0, 1);
+        if (canvasPrincipal.renderMode != RenderMode.ScreenSpaceOverlay)
+            canvasPrincipal.renderMode = RenderMode.ScreenSpaceOverlay;
 
-        Vector2 mouseScreenPos = Mouse.current.position.ReadValue();
-        Camera camaraUI = canvasRaiz.renderMode == RenderMode.ScreenSpaceOverlay ? null : Camera.main;
+        menuInstanciado.SetActive(true);
+        RectTransform rectMenu = menuInstanciado.GetComponent<RectTransform>();
+        rectMenu.pivot = new Vector2(0, 1);
+        rectMenu.position = Mouse.current.position.ReadValue();
 
-        RectTransformUtility.ScreenPointToLocalPointInRectangle(
-            panelMenuUI.transform.parent.GetComponent<RectTransform>(),
-            mouseScreenPos,
-            camaraUI,
-            out Vector2 localPoint
-        );
-        panelRect.localPosition = localPoint;
+        foreach (var btn in poolBotones) btn.SetActive(false);
 
-        // 3. LIMPIEZA Y GENERACIÓN DE BOTONES
-        foreach (var b in botonesInstanciados) Destroy(b);
-        botonesInstanciados.Clear();
-
-        foreach (var acc in acciones)
+        for (int i = 0; i < acciones.Count; i++)
         {
-            Acciones accionFijada = acc; // CRÍTICO: Previene un bug de memoria de C# al generar los botones
-            
-            GameObject nuevoBoton = Instantiate(botonPlantilla, contenedorBotones);
-            nuevoBoton.SetActive(true);
+            Acciones accionFijada = acciones[i];
+            GameObject botonActual;
 
-            var textoUI = nuevoBoton.GetComponentInChildren<Text>();
+            if (i < poolBotones.Count) botonActual = poolBotones[i];
+            else
+            {
+                botonActual = Instantiate(prefabBoton, contenedorBotonesInstanciado);
+                poolBotones.Add(botonActual);
+            }
+
+            botonActual.SetActive(true);
+
+            var textoUI = botonActual.GetComponentInChildren<Text>();
             if (textoUI != null) textoUI.text = accionFijada.ToString();
             else
             {
-                var tmpro = nuevoBoton.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+                var tmpro = botonActual.GetComponentInChildren<TMPro.TextMeshProUGUI>();
                 if (tmpro != null) tmpro.text = accionFijada.ToString();
             }
 
-            Button btnComponent = nuevoBoton.GetComponent<Button>();
+            Button btnComponent = botonActual.GetComponent<Button>();
             if (btnComponent != null)
             {
-                // Ahora sí o sí enviará la acción que acabas de clicar al GameManager
+                btnComponent.onClick.RemoveAllListeners(); 
                 btnComponent.onClick.AddListener(() => {
                     callback?.Invoke(accionFijada);
                 });
             }
-
-            botonesInstanciados.Add(nuevoBoton);
         }
     }
 
@@ -159,13 +161,19 @@ public class GridInteractionUI : MonoBehaviour
             lineaRuta.startColor = Color.red;
             lineaRuta.endColor = Color.red;
         }
-        if (panelMenuUI != null) panelMenuUI.SetActive(false); 
+        
+        // TODO: Si la interacción no es válida, que a lo mejor se desactive el botón o algo.
     }
 
     public void OcultarTodo()
     {
         if (instanciaCursor) instanciaCursor.SetActive(false);
         if (lineaRuta) lineaRuta.gameObject.SetActive(false);
-        if (panelMenuUI) panelMenuUI.SetActive(false);
+        OcultarMenu();
+    }
+
+    private void OcultarMenu()
+    {
+        if (menuInstanciado != null) menuInstanciado.SetActive(false);
     }
 }

@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class PuertaMazmorra : MonoBehaviour
 {
-    private const float TILE_CENTER_OFFSET = 1;
+    private const float TILE_CENTER_OFFSET = 0;
     public int idSalaDestino;
     public int destinoX;
     public int destinoY;

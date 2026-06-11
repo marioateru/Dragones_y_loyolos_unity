@@ -19,7 +19,6 @@ public class PlayerInputController : MonoBehaviour
     {
         if (jugador == null || !jugador.EsSuTurno()) return;
 
-        // CIERRE AL USAR TECLADO (WASD)
         var keyboard = Keyboard.current;
         if (keyboard != null && (keyboard.wKey.wasPressedThisFrame || keyboard.aKey.wasPressedThisFrame || keyboard.sKey.wasPressedThisFrame || keyboard.dKey.wasPressedThisFrame))
         {
@@ -47,30 +46,17 @@ public class PlayerInputController : MonoBehaviour
         var mouse = Mouse.current;
         if (mouse == null || uiInteractiva == null) return;
         
-        // INTERCEPTOR DE CLICS UI: Impide que el clic del menú interactúe con el suelo
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
-        // LÓGICA DE REJILLA NATIVA (A prueba de balas)
         if (mapGrid == null) mapGrid = FindFirstObjectByType<Grid>();
-        
-        Vector2 mousePosScreen = mouse.position.ReadValue();
-        Vector3 mousePosCorrected = new Vector3(mousePosScreen.x, mousePosScreen.y, Mathf.Abs(Camera.main.transform.position.z));
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(mousePosCorrected);
-        
-        int objetivoX, objetivoY;
+        if (mapGrid == null) return;
 
-        if (mapGrid != null)
-        {
-            Vector3Int cellPos = mapGrid.WorldToCell(mouseWorldPos);
-            objetivoX = cellPos.x;
-            objetivoY = -cellPos.y; // Invertimos la Y porque Tiled va hacia abajo y Unity hacia arriba
-        }
-        else
-        {
-            // Fallback de seguridad por si el Grid tarda un frame en cargar
-            objetivoX = Mathf.FloorToInt(mouseWorldPos.x);
-            objetivoY = Mathf.FloorToInt(-mouseWorldPos.y + 1f); 
-        }
+        Vector2 mousePosScreen = mouse.position.ReadValue();
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(new Vector3(mousePosScreen.x, mousePosScreen.y, Mathf.Abs(Camera.main.transform.position.z)));
+        
+        Vector3Int cellPos = mapGrid.WorldToCell(mouseWorldPos);
+        int objetivoX = cellPos.x;
+        int objetivoY = -cellPos.y - 1; // Restamos -1 y transformamos "y" a negativo porque tiled funciona así.
 
         if (mouse.leftButton.wasPressedThisFrame)
         {
@@ -83,7 +69,7 @@ public class PlayerInputController : MonoBehaviour
         {
             uiInteractiva.OcultarTodo();
             
-            Vector2 origenVisual = new Vector2(jugador.xPos + 0.5f, -jugador.yPos + 0.5f);
+            Vector2 origenVisual = new Vector2(jugador.xPos + 0.5f, -jugador.yPos - 0.5f);
             List<Acciones> opciones = jugador.DeterminarOpcionesCasilla(objetivoX, objetivoY);
             
             if (opciones.Count > 0)
@@ -113,7 +99,7 @@ public class PlayerInputController : MonoBehaviour
             else
             {
                 uiInteractiva.ActivarSeleccionIzquierda(objetivoX, objetivoY, true);
-                uiInteractiva.DibujarLinea(origenVisual, new Vector2(objetivoX + 0.5f, -objetivoY + 0.5f), true);
+                uiInteractiva.DibujarLinea(origenVisual, new Vector2(objetivoX + 0.5f, -objetivoY - 0.5f), true);
             }
         }
     }

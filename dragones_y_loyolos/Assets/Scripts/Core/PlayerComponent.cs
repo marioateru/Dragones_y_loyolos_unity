@@ -21,9 +21,7 @@ public class PlayerComponent : Entidad
             return;
         }
         
-        // Se habilita la bandera y el código termina. El GameManager se quedará esperando.
         esMiTurno = true;
-        Debug.Log("🟩 [JUGADOR] Es mi turno de decisión. Esperando input de teclado o ratón...");
     }
 
     public bool EsSuTurno() => esMiTurno;
@@ -59,7 +57,10 @@ public class PlayerComponent : Entidad
     {
         if (!accionesPermitidas.Contains(accion)) return false;
 
-        int dist = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(xPos) - targetX), Mathf.Abs(Mathf.RoundToInt(yPos) - targetY));
+        int origenX = Mathf.RoundToInt(xPos);
+        int origenY = Mathf.RoundToInt(yPos);
+
+        int dist = Mathf.Max(Mathf.Abs(origenX - targetX), Mathf.Abs(origenY - targetY));
         int rangoPermitido = 1;
 
         if (accion == Acciones.Moverse) rangoPermitido = Mathf.Max(1, velocidad);
@@ -68,7 +69,7 @@ public class PlayerComponent : Entidad
 
         if (accion == Acciones.Moverse)
         {
-            if (collisionChecker.HayMuro(targetX, targetY)) return false;
+            if (collisionChecker.HayMuroEnRuta(origenX, origenY, targetX, targetY)) return false;
             if (gameManager.ObtenerEntidadEnCasilla(targetX, targetY) != null) return false;
         }
 

@@ -7,11 +7,24 @@ public class SQLManager : MonoBehaviour
 {
     private SQLiteConnection connection;
 
+    [Header("Reiniciar DB")]
+    [Tooltip("Activar para forzar a hacer una base de datos limpia desde cero en streamingassets")]
+    public bool forzarReinicioBD = true;
+
     void Awake()
     {
         string dbPath = string.Format("{0}/{1}", Application.streamingAssetsPath, "dragones_y_loyolos.db");
         string filepath = string.Format("{0}/{1}", Application.persistentDataPath, "dragones_y_loyolos.db");
         
+        // Para forzar a reconstruir la base de datos en caso de que algo vaya mal.
+        #if UNITY_EDITOR
+        if (forzarReinicioBD && System.IO.File.Exists(filepath))
+        {
+            System.IO.File.Delete(filepath);
+            Debug.Log("[SQLManager] BD persistente borrada. Cargando copia limpia desde StreamingAssets.");
+        }
+        #endif
+
         if (!System.IO.File.Exists(filepath)) {
             System.IO.File.Copy(dbPath, filepath);
         }
@@ -20,6 +33,15 @@ public class SQLManager : MonoBehaviour
 
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_sala ON Entidades_sala_proposito_contenido (id_sala_proposito_contenido, timestep);");
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_tiempo ON Entidades_sala_proposito_contenido (id_entidades, timestep, subTimestep);");
+    }
+
+    // Para evitar que se corrompan datos al cerrar el juego.
+    void OnDestroy()
+    {
+        if (connection != null)
+        {
+            connection.Close();
+        }
     }
 
     public int ObtenerUltimoTimestep()
@@ -97,7 +119,6 @@ public class SQLManager : MonoBehaviour
         }
     }
 
-    // CORRECCIÓN: Ahora pide el idSalaActual por parámetro en vez de forzar el 0
     public void GuardarHistorialDeAcciones(List<AccionEnMemoria> colaDeAcciones, int idSalaActual)
     {
         connection.BeginTransaction();
@@ -123,14 +144,12 @@ public class SQLManager : MonoBehaviour
         }
     }
 
-    // NUEVO: Movimiento instantáneo entre salas
     public void MoverEntidadASala(int id_entidad, int id_sala, int destX, int destY, int timestep)
     {
         string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
         connection.Execute(queryPos, timestep, 0, id_entidad, id_sala, destX, destY);
     }
 
-    // NUEVO: Fotografía de la mazmorra que dejas atrás
     public void GuardarEstadoMundoActual(List<Entidad> entidades, int idSala, int timestep)
     {
         connection.BeginTransaction();
@@ -138,7 +157,7 @@ public class SQLManager : MonoBehaviour
         {
             foreach (var entidad in entidades)
             {
-                if (EsJugador(entidad.id_entidades)) continue; // El jugador se guarda con MoverEntidadASala
+                if (EsJugador(entidad.id_entidades)) continue;
 
                 string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryPos, timestep, 0, entidad.id_entidades, idSala, Mathf.RoundToInt(entidad.xPos), Mathf.RoundToInt(entidad.yPos));
@@ -159,19 +178,16 @@ public class SQLManager : MonoBehaviour
     {
         List<Acciones> acciones = new List<Acciones>();
         
-        // Consultamos la tabla usando el molde de datos que YA tienes en Tablas_Intermedias.cs
         string query = "SELECT id_acciones FROM Acciones_entidades WHERE id_entidades = ?";
         
         try
         {
-            // Usamos tu clase AccionesEntidadesSQL nativa
             var resultados = connection.Query<AccionesEntidadesSQL>(query, idEntidad);
 
             foreach (var fila in resultados)
             {
                 string nombreAccion = fila.id_acciones;
                 
-                // Convertimos el texto de la base de datos al Enum de C# de forma segura
                 if (System.Enum.TryParse(nombreAccion, true, out Acciones accionParseada))
                 {
                     if (!acciones.Contains(accionParseada)) 
@@ -186,7 +202,7 @@ public class SQLManager : MonoBehaviour
             Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {e.Message}");
         }
 
-        // Fallback de seguridad: si la tabla intermedia está vacía, le damos acciones básicas
+        // Si la tabla intermedia de acciones está vacía, le damos a la entidad las básicas.
         if (acciones.Count == 0)
         {
             acciones.Add(Acciones.Moverse);

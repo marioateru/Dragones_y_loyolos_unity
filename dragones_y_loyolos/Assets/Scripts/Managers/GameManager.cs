@@ -65,7 +65,6 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        // ARREGLO DEL "DOBLE CLIC": Todo se procesa en el mismo frame hasta llegar al turno del jugador
         int safeGuard = 0;
         bool procesandoLogica = true;
         
@@ -74,21 +73,11 @@ public class GameManager : MonoBehaviour
             safeGuard++;
             switch (estadoActual)
             {
-                case GameState.PreparandoTurno: 
-                    PrepararColas(); 
-                    break;
-                case GameState.EsperandoEleccion: 
-                    procesandoLogica = false; // Rompe el bucle para escuchar tu teclado/ratón sin perder frames
-                    break; 
-                case GameState.AvanzandoCola: 
-                    PedirAccionASiguienteEntidad(); 
-                    break;
-                case GameState.ProcesandoTurno: 
-                    ProcesarAcciones(); 
-                    break;
-                case GameState.FinalizandoTurno: 
-                    LimpiarYComprobarGuardado(); 
-                    break;
+                case GameState.PreparandoTurno: PrepararColas(); break;
+                case GameState.EsperandoEleccion: procesandoLogica = false; break; 
+                case GameState.AvanzandoCola: PedirAccionASiguienteEntidad(); break;
+                case GameState.ProcesandoTurno: ProcesarAcciones(); break;
+                case GameState.FinalizandoTurno: LimpiarYComprobarGuardado(); break;
             }
         }
     }
@@ -102,7 +91,7 @@ public class GameManager : MonoBehaviour
         ControladorSala prefabSala = Resources.Load<ControladorSala>(rutaMapa);
 
         if (prefabSala == null) return;
-        salaActual = Instantiate(prefabSala, new Vector3(0, 1, 0), Quaternion.identity);
+        salaActual = Instantiate(prefabSala, Vector3.zero, Quaternion.identity);
     }
 
     private void GenerarEntidadesDesdeSQL()
@@ -280,7 +269,7 @@ public class GameManager : MonoBehaviour
         ControladorSala nuevaSalaPrefab = Resources.Load<ControladorSala>(rutaMapa);
 
         if (nuevaSalaPrefab == null) return;
-        salaActual = Instantiate(nuevaSalaPrefab, new Vector3(0, 1, 0), Quaternion.identity);
+        salaActual = Instantiate(nuevaSalaPrefab, Vector3.zero, Quaternion.identity);
 
         sqlManager.MoverEntidadASala(jugador.id_entidades, idSalaDestino, destX, destY, timestepActual);
         jugador.EjecutarAccion(Acciones.Moverse, destX, destY);
