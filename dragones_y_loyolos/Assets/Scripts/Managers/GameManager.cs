@@ -65,13 +65,31 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
-        switch (estadoActual)
+        // ARREGLO DEL "DOBLE CLIC": Todo se procesa en el mismo frame hasta llegar al turno del jugador
+        int safeGuard = 0;
+        bool procesandoLogica = true;
+        
+        while (procesandoLogica && safeGuard < 1000)
         {
-            case GameState.PreparandoTurno: PrepararColas(); break;
-            case GameState.EsperandoEleccion: break;
-            case GameState.AvanzandoCola: PedirAccionASiguienteEntidad(); break;
-            case GameState.ProcesandoTurno: ProcesarAcciones(); break;
-            case GameState.FinalizandoTurno: LimpiarYComprobarGuardado(); break;
+            safeGuard++;
+            switch (estadoActual)
+            {
+                case GameState.PreparandoTurno: 
+                    PrepararColas(); 
+                    break;
+                case GameState.EsperandoEleccion: 
+                    procesandoLogica = false; // Rompe el bucle para escuchar tu teclado/ratón sin perder frames
+                    break; 
+                case GameState.AvanzandoCola: 
+                    PedirAccionASiguienteEntidad(); 
+                    break;
+                case GameState.ProcesandoTurno: 
+                    ProcesarAcciones(); 
+                    break;
+                case GameState.FinalizandoTurno: 
+                    LimpiarYComprobarGuardado(); 
+                    break;
+            }
         }
     }
 
@@ -90,10 +108,10 @@ public class GameManager : MonoBehaviour
     private void GenerarEntidadesDesdeSQL()
     {
         entidadesEnMapa.Clear();
-
         if (salaActual == null || prefabJugador == null || prefabEnemigoGenerico == null) return;
 
         var listaSQL = sqlManager.ObtenerEntidadesEnSala(salaActual.idSalaActual, timestepActual);
+        PlayerInputController inputController = FindFirstObjectByType<PlayerInputController>();
 
         foreach (var entidadSQL in listaSQL)
         {
@@ -113,7 +131,8 @@ public class GameManager : MonoBehaviour
             if (checker != null && salaActual.tilemapMuros != null) checker.AsignarMuros(salaActual.tilemapMuros);
 
             sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
-            
+            nuevoObj.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
+
             ComponenteVisual visuales = nuevoObj.GetComponent<ComponenteVisual>();
             if (visuales != null)
             {
@@ -126,6 +145,8 @@ public class GameManager : MonoBehaviour
             if (esJugador) 
             {
                 jugadorPrincipal = (PlayerComponent)nuevoObj;
+                if (inputController != null) inputController.jugador = jugadorPrincipal;
+
                 if (camaraCinemachine != null) 
                 {
                     camaraCinemachine.Follow = jugadorPrincipal.transform;
@@ -152,7 +173,6 @@ public class GameManager : MonoBehaviour
             if (entidad is EnemyComponent)
             {
                 int distancia = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(entidad.xPos) - pX), Mathf.Abs(Mathf.RoundToInt(entidad.yPos) - pY));
-                
                 bool isRun = distancia <= rangoLowPriority;
                 bool isHighPriority = distancia <= rangoHighPriority;
                 
@@ -161,13 +181,6 @@ public class GameManager : MonoBehaviour
             }
             entityQueue.Add(entidad);
         }
-        
-        entityQueue.Sort((a, b) => 
-        {
-            if (a.isHighPriority && !b.isHighPriority) return -1;
-            if (!a.isHighPriority && b.isHighPriority) return 1;  
-            return b.destreza.CompareTo(a.destreza);
-        }); 
 
         indiceEntidadPensando = 0;
         PedirAccionASiguienteEntidad();
@@ -177,8 +190,9 @@ public class GameManager : MonoBehaviour
     {
         if (indiceEntidadPensando < entityQueue.Count)
         {
+            Entidad actorTurno = entityQueue[indiceEntidadPensando];
             estadoActual = GameState.EsperandoEleccion;
-            entityQueue[indiceEntidadPensando].ChooseAction();
+            actorTurno.ChooseAction();
         }
         else
         {
@@ -205,14 +219,28 @@ public class GameManager : MonoBehaviour
 
         foreach (var accion in actionQueue)
         {
-            // Si el jugador no está en la sala, computar el turno es redundante.
             if (salaActual == null) break;
+
+            Entidad actor = accion.entidad;
+            if (actor.IsDead()) continue;
 
             subTimestepActual++;
             accion.subTimestep = subTimestepActual;
-            accion.entidad.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
+
+            if (accion.tipoAccion == Acciones.Moverse)
+            {
+                PuertaMazmorra puerta = salaActual.ObtenerPuerta(accion.objetivoX, accion.objetivoY);
+                if (puerta != null && actor == jugadorPrincipal)
+                {
+                    actor.EjecutarAccion(Acciones.Moverse, accion.objetivoX, accion.objetivoY);
+                    ViajarAUbicacion(actor, puerta.idSalaDestino, puerta.destinoX, puerta.destinoY);
+                    break;
+                }
+            }
+            actor.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
         }
-        estadoActual = GameState.FinalizandoTurno;
+        
+        if (salaActual != null) estadoActual = GameState.FinalizandoTurno;
     }
 
     private void LimpiarYComprobarGuardado()
@@ -229,7 +257,6 @@ public class GameManager : MonoBehaviour
     public void GuardarPartidaEnDisco()
     {
         if (historialPendiente.Count == 0) return;
-        
         sqlManager.GuardarHistorialDeAcciones(historialPendiente, salaActual.idSalaActual);
         historialPendiente.Clear();
     }
@@ -238,7 +265,6 @@ public class GameManager : MonoBehaviour
     {
         actionQueue.Clear();
         entityQueue.Clear();
-
         GuardarPartidaEnDisco();
         sqlManager.GuardarEstadoMundoActual(entidadesEnMapa, salaActual.idSalaActual, timestepActual);
 
@@ -254,7 +280,6 @@ public class GameManager : MonoBehaviour
         ControladorSala nuevaSalaPrefab = Resources.Load<ControladorSala>(rutaMapa);
 
         if (nuevaSalaPrefab == null) return;
-
         salaActual = Instantiate(nuevaSalaPrefab, new Vector3(0, 1, 0), Quaternion.identity);
 
         sqlManager.MoverEntidadASala(jugador.id_entidades, idSalaDestino, destX, destY, timestepActual);
@@ -278,9 +303,7 @@ public class GameManager : MonoBehaviour
         foreach (Entidad entidad in entidadesEnMapa)
         {
             if (Mathf.RoundToInt(entidad.xPos) == x && Mathf.RoundToInt(entidad.yPos) == y && !entidad.IsDead())
-            {
                 return entidad;
-            }
         }
         return null;
     }
@@ -288,12 +311,9 @@ public class GameManager : MonoBehaviour
     private void OnDrawGizmos()
     {
         if (!drawGizmos || jugadorPrincipal == null) return;
-
-        Gizmos.color = new Color(1f, 0f, 0f, 0.3f); // Rojo translúcido
+        Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
         Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoHighPriority);
-        Gizmos.DrawSphere(jugadorPrincipal.transform.position, 0.1f);
-
-        Gizmos.color = new Color(1f, 1f, 0f, 0.15f); // Amarillo muy translúcido
+        Gizmos.color = new Color(1f, 1f, 0f, 0.15f);
         Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoLowPriority);
     }
 }

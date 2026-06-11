@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.InputSystem;
+using System.Collections.Generic;
 
 [RequireComponent(typeof(TileCollisionChecker))]
 public class PlayerComponent : Entidad
@@ -20,58 +20,64 @@ public class PlayerComponent : Entidad
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
+        
+        // Se habilita la bandera y el código termina. El GameManager se quedará esperando.
         esMiTurno = true;
+        Debug.Log("🟩 [JUGADOR] Es mi turno de decisión. Esperando input de teclado o ratón...");
     }
 
-    void Update()
+    public bool EsSuTurno() => esMiTurno;
+
+    public List<Acciones> DeterminarOpcionesCasilla(int targetX, int targetY)
     {
-        if (!esMiTurno) return;
+        List<Acciones> opciones = new List<Acciones>();
+        Entidad entidadDestino = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
+        PuertaMazmorra puerta = gameManager.salaActual.ObtenerPuerta(targetX, targetY);
 
-        var keyboard = Keyboard.current;
-        if (keyboard == null) return;
-
-        int dx = 0, dy = 0;
-
-        if (keyboard.wKey.wasPressedThisFrame) dy = -1;
-        else if (keyboard.sKey.wasPressedThisFrame) dy = 1;
-        else if (keyboard.aKey.wasPressedThisFrame) dx = -1;
-        else if (keyboard.dKey.wasPressedThisFrame) dx = 1;
-
-        if (dx != 0 || dy != 0)
+        if (entidadDestino != null)
         {
-            int objetivoX = Mathf.RoundToInt(xPos) + dx;
-            int objetivoY = Mathf.RoundToInt(yPos) + dy;
-
-            if (gameManager != null && gameManager.salaActual != null)
-            {
-                PuertaMazmorra puertaEnObjetivo = gameManager.salaActual.ObtenerPuerta(objetivoX, objetivoY);
-                if (puertaEnObjetivo != null)
-                {
-                    esMiTurno = false;
-                    SubmitAction(Acciones.Moverse, objetivoX, objetivoY);
-                    gameManager.ViajarAUbicacion(this, puertaEnObjetivo.idSalaDestino, puertaEnObjetivo.destinoX, puertaEnObjetivo.destinoY);
-                    return;
-                }
-            }
-
-            if (collisionChecker.HayMuro(objetivoX, objetivoY)) 
-            {
-                Debug.Log("No puedes moverte, hay un muro en medio.");
-                return; 
-            }
-
-            if (gameManager != null)
-            {
-                Entidad entidadBloqueante = gameManager.ObtenerEntidadEnCasilla(objetivoX, objetivoY);
-                if (entidadBloqueante != null)
-                {
-                    Debug.Log($"No puedes moverte, hay otra entidad ({entidadBloqueante.gameObject.name}) en medio.");
-                    return; 
-                }
-            }
-
-            esMiTurno = false;
-            SubmitAction(Acciones.Moverse, objetivoX, objetivoY);
+            if (accionesPermitidas.Contains(Acciones.Atacar)) opciones.Add(Acciones.Atacar);
+            if (accionesPermitidas.Contains(Acciones.Defender)) opciones.Add(Acciones.Defender);
+            if (accionesPermitidas.Contains(Acciones.Interactuar)) opciones.Add(Acciones.Interactuar);
         }
+        else if (puerta != null)
+        {
+            if (accionesPermitidas.Contains(Acciones.Moverse)) opciones.Add(Acciones.Moverse);
+            if (accionesPermitidas.Contains(Acciones.Interactuar)) opciones.Add(Acciones.Interactuar);
+        }
+        else
+        {
+            if (accionesPermitidas.Contains(Acciones.Moverse)) opciones.Add(Acciones.Moverse);
+        }
+
+        if (accionesPermitidas.Contains(Acciones.Consumir)) opciones.Add(Acciones.Consumir);
+
+        return opciones;
+    }
+
+    public bool ValidarIntencion(Acciones accion, int targetX, int targetY)
+    {
+        if (!accionesPermitidas.Contains(accion)) return false;
+
+        int dist = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(xPos) - targetX), Mathf.Abs(Mathf.RoundToInt(yPos) - targetY));
+        int rangoPermitido = 1;
+
+        if (accion == Acciones.Moverse) rangoPermitido = Mathf.Max(1, velocidad);
+        
+        if (dist > rangoPermitido) return false;
+
+        if (accion == Acciones.Moverse)
+        {
+            if (collisionChecker.HayMuro(targetX, targetY)) return false;
+            if (gameManager.ObtenerEntidadEnCasilla(targetX, targetY) != null) return false;
+        }
+
+        return true;
+    }
+
+    public void ConsumirTurno(Acciones accion, int targetX, int targetY)
+    {
+        esMiTurno = false;
+        SubmitAction(accion, targetX, targetY);
     }
 }

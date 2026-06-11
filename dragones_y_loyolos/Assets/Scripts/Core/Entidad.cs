@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 public abstract class Entidad : MonoBehaviour
@@ -17,16 +18,21 @@ public abstract class Entidad : MonoBehaviour
     [field: SerializeField] public int inteligencia { get; private set; }
     [field: SerializeField] public int sabiduria { get; private set; }
     [field: SerializeField] public int carisma { get; private set; }
+    [field: SerializeField] public int velocidad { get; protected set; } = 6;
 
     [Header("Posición Tilemap")]
     [field: SerializeField] public float xPos { get; protected set; }
     [field: SerializeField] public float yPos { get; protected set; }
 
     protected GameManager gameManager;
+    public bool estaDefendido { get; set; } = false;
 
     // Si está en rango de jugador, se computa
     public bool isRun {get; protected set;}
     public bool isHighPriority {get; protected set;}
+
+    [Header("Acciones")]
+    public List<Acciones> accionesPermitidas = new List<Acciones>() { Acciones.Moverse, Acciones.Atacar, Acciones.Defender, Acciones.Interactuar };
 
     public virtual void Awake()
     {
@@ -72,37 +78,73 @@ public abstract class Entidad : MonoBehaviour
         gameManager.RegistrarEleccion(this, accion, Mathf.RoundToInt(targetX), Mathf.RoundToInt(targetY));
     }
 
-    public void EjecutarAccion(Acciones accion, int targetX, int targetY)
+    public virtual void EjecutarAccion(Acciones accion, int targetX, int targetY)
     {
         switch (accion)
         {
             case Acciones.Moverse:
                 this.xPos = targetX;
                 this.yPos = targetY;
-                
                 ActualizarPosicionVisual();
+                break;
 
-                Debug.Log($"[Resolución] '{gameObject.name}' se desplazó a ({xPos}, {yPos})");
-                break;
-                
             case Acciones.Atacar:
-                Debug.Log($"[Resolución] '{gameObject.name}' atacó hacia ({targetX}, {targetY})");
+                Entidad objetivoAtaque = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
+                if (objetivoAtaque != null)
+                {
+                    bool desventaja = objetivoAtaque.estaDefendido; 
+                    int d20 = DnD_Rules.LanzarD20(ventaja: false, desventaja: desventaja);
+                    int tiradaAtaque = d20 + fuerza;
+
+                    if (tiradaAtaque >= objetivoAtaque.ac)
+                    {
+                        int dannoTotal = DnD_Rules.LanzarDados(1, 4) + fuerza; // TODO: Armas
+                        Debug.Log($"<color=orange>[Combate]</color> {gameObject.name} acierta a {objetivoAtaque.gameObject.name} (Tirada: {d20} + {fuerza} = {tiradaAtaque} vs AC {objetivoAtaque.ac}). Daño: {dannoTotal}");
+                        objetivoAtaque.RecibirInteraccion(this, Acciones.Atacar, dannoTotal);
+                    }
+                    else
+                    {
+                        Debug.Log($"<color=gray>[Combate]</color> {gameObject.name} falla contra {objetivoAtaque.gameObject.name} (Tirada: {tiradaAtaque} vs AC {objetivoAtaque.ac}).");
+                    }
+                }
                 break;
-                
+
             case Acciones.Defender:
-                Debug.Log($"[Resolución] '{gameObject.name}' se protegió.");
+                this.estaDefendido = true;
+                Debug.Log($"<color=blue>[Defensa]</color> {gameObject.name} adopta una postura defensiva.");
                 break;
-                
+
             case Acciones.Interactuar:
-                Debug.Log($"[Resolución] '{gameObject.name}' interactuó en ({targetX}, {targetY})");
+                Entidad objetivoInteraccion = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
+                if (objetivoInteraccion != null) objetivoInteraccion.RecibirInteraccion(this, Acciones.Interactuar);
                 break;
                 
             case Acciones.Consumir:
-                Debug.Log($"[Resolución] '{gameObject.name}' usó un objeto.");
+                int cura = DnD_Rules.LanzarDados(1, 4);
+                RecibirInteraccion(this, Acciones.Consumir, cura);
                 break;
-                
-            default:
-                Debug.LogWarning($"[Entidad] La acción {accion} no está contemplada.");
+        }
+    }
+
+    // El receptor sufre las consecuencias
+    public virtual void RecibirInteraccion(Entidad origen, Acciones tipoInteraccion, int valorData = 0)
+    {
+        switch (tipoInteraccion)
+        {
+            case Acciones.Atacar:
+                this.hp -= valorData;
+                break;
+
+            case Acciones.Defender:
+                this.estaDefendido = true;
+                break;
+
+            case Acciones.Consumir:
+                this.hp += valorData;
+                break;
+
+            case Acciones.Interactuar:
+                Debug.Log($"(Por implementar) El {gameObject.name} te mira mal.");
                 break;
         }
     }

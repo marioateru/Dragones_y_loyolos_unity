@@ -42,7 +42,6 @@ public class SQLManager : MonoBehaviour
             estadoStats = new StatsBaseEntidadesSQL();
         }
 
-        // CORRECCIÓN: Ya no busca en la Sala 0, busca la posición más reciente sea donde sea
         var posBD = connection.Query<EntidadesSalaPropositoContenidoSQL>(
             "SELECT Xpos, Ypos FROM Entidades_sala_proposito_contenido WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
             id_entidad, timestepInicial).FirstOrDefault();
@@ -154,5 +153,47 @@ public class SQLManager : MonoBehaviour
             connection.Rollback();
             Debug.LogError("[SQLManager] Error al congelar el estado de la mazmorra: " + e.Message);
         }
+    }
+
+    public List<Acciones> ObtenerAccionesPermitidas(int idEntidad)
+    {
+        List<Acciones> acciones = new List<Acciones>();
+        
+        // Consultamos la tabla usando el molde de datos que YA tienes en Tablas_Intermedias.cs
+        string query = "SELECT id_acciones FROM Acciones_entidades WHERE id_entidades = ?";
+        
+        try
+        {
+            // Usamos tu clase AccionesEntidadesSQL nativa
+            var resultados = connection.Query<AccionesEntidadesSQL>(query, idEntidad);
+
+            foreach (var fila in resultados)
+            {
+                string nombreAccion = fila.id_acciones;
+                
+                // Convertimos el texto de la base de datos al Enum de C# de forma segura
+                if (System.Enum.TryParse(nombreAccion, true, out Acciones accionParseada))
+                {
+                    if (!acciones.Contains(accionParseada)) 
+                    {
+                        acciones.Add(accionParseada);
+                    }
+                }
+            }
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {e.Message}");
+        }
+
+        // Fallback de seguridad: si la tabla intermedia está vacía, le damos acciones básicas
+        if (acciones.Count == 0)
+        {
+            acciones.Add(Acciones.Moverse);
+            acciones.Add(Acciones.Atacar);
+            acciones.Add(Acciones.Defender);
+        }
+
+        return acciones;
     }
 }
