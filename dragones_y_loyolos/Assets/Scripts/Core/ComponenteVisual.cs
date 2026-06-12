@@ -3,40 +3,37 @@ using UnityEngine;
 [RequireComponent(typeof(Animator))]
 public class ComponenteVisual : MonoBehaviour
 {
-    private Animator anim;
+    private Animator animator;
 
     private void Awake()
     {
-        anim = GetComponent<Animator>();
+        animator = GetComponent<Animator>();
     }
 
-    // Recibe el nombre desde el GameManager y se encarga de todo lo gráfico
     public void InicializarVisuales(string nombreVisual)
     {
-        if (anim == null) return;
+        if (animator == null) return;
 
-        // 1. Intentamos cargar el controlador de animación específico
         RuntimeAnimatorController overrideController = Resources.Load<RuntimeAnimatorController>($"Animaciones/{nombreVisual}");
         
         if (overrideController != null)
         {
-            anim.runtimeAnimatorController = overrideController;
-            Debug.Log($"[Visuales] Animaciones de '{nombreVisual}' cargadas con éxito en {gameObject.name}.");
+            animator.runtimeAnimatorController = overrideController;
+            Debug.Log($"[Visuales] Aspecto de '{nombreVisual}' cargadas con éxito en {gameObject.name}.");
         }
         else
         {
-            // 2. Fallback: No existe en Resources, cargamos el de error
-            Debug.LogWarning($"[Visuales] No se encontró 'Animaciones/{nombreVisual}'. Cargando el override de seguridad (Error_Override).");
+            Debug.LogWarning($"[Visuales] No se encontró 'Animaciones/{nombreVisual}'. Aspecto de seguridad (Error_Override).");
             
             RuntimeAnimatorController errorController = Resources.Load<RuntimeAnimatorController>("Animaciones/Error_Override");
             
             if (errorController != null)
             {
-                anim.runtimeAnimatorController = errorController;
+                animator.runtimeAnimatorController = errorController;
             }
             else
             {
-                Debug.LogError("[Visuales] ERROR CRÍTICO: Tampoco se ha encontrado 'Animaciones/Error_Override' en la carpeta Resources. ¡Créalo!");
+                Debug.LogError("[Visuales] No se ha encontrado 'Animaciones/Error_Override' en la carpeta.");
             }
         }
     }

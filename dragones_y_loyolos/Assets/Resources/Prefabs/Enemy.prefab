@@ -56,8 +56,12 @@ MonoBehaviour:
   <inteligencia>k__BackingField: 0
   <sabiduria>k__BackingField: 0
   <carisma>k__BackingField: 0
+  <velocidad>k__BackingField: 6
   <xPos>k__BackingField: 0
   <yPos>k__BackingField: 0
+  accionesPermitidas: 
+  <id_monstruos>k__BackingField: 
+  <desafio>k__BackingField: 0
 --- !u!114 &1212691631311904118
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -81,6 +85,7 @@ GameObject:
   - component: {fileID: 5801517510850200315}
   - component: {fileID: 4264882767365993454}
   - component: {fileID: 2038372026211840358}
+  - component: {fileID: 4813241154276098058}
   m_Layer: 0
   m_Name: Visual
   m_TagString: Untagged
@@ -184,3 +189,15 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &4813241154276098058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3419805378234387721}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: eafe4a4193d1e489f8b229fc5565aa79, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ComponenteVisual

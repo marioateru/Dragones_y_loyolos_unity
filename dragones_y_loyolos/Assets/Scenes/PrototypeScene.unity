@@ -57719,8 +57719,8 @@ MonoBehaviour:
   prefabJugador: {fileID: 9079720327749776205, guid: 432df51d58cce4866bf4658180948f46, type: 3}
   prefabEnemigoGenerico: {fileID: 60726072003821503, guid: d92b6d4064a044bf28f5e516fc25d215, type: 3}
   drawGizmos: 1
-  rangoHighPriority: 4
-  rangoLowPriority: 8
+  rangoHighPriority: 12
+  rangoLowPriority: 20
   turnosParaAutoguardado: 10
 --- !u!114 &905382504
 MonoBehaviour:

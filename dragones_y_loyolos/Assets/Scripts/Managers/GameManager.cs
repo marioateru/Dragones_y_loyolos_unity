@@ -57,7 +57,6 @@ public class GameManager : MonoBehaviour
         sqlManager = GetComponent<SQLManager>();
         timestepActual = Mathf.Max(1, sqlManager.ObtenerUltimoTimestep()); 
         
-        // MODIFICACIÓN: Obligamos al GameManager a saber la sala real del jugador en vez de fiarse del Inspector
         idSalaInicial = sqlManager.ObtenerSalaDelJugador(timestepActual, idSalaInicial);
         
         CargarSalaInicial();
