@@ -124,6 +124,6 @@ public abstract class Entidad : MonoBehaviour
 
     private void ActualizarPosicionVisual()
     {
-        transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0);
+        transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0f);
     }
 }

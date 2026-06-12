@@ -52,11 +52,11 @@ public class PlayerInputController : MonoBehaviour
         if (mapGrid == null) return;
 
         Vector2 mousePosScreen = mouse.position.ReadValue();
-        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(new Vector3(mousePosScreen.x, mousePosScreen.y, Mathf.Abs(Camera.main.transform.position.z)));
-        
+        Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouse.position.ReadValue());
+
         Vector3Int cellPos = mapGrid.WorldToCell(mouseWorldPos);
-        int objetivoX = cellPos.x;
-        int objetivoY = -cellPos.y - 1; // Restamos -1 y transformamos "y" a negativo porque tiled funciona así.
+        int objetivoX = Mathf.FloorToInt(mouseWorldPos.x);
+        int objetivoY = Mathf.FloorToInt(-mouseWorldPos.y);
 
         if (mouse.leftButton.wasPressedThisFrame)
         {

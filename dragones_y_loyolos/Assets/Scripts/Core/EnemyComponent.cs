@@ -5,6 +5,11 @@ public class EnemyComponent : Entidad
 {
     // Para que no explote la CPU
     private const int MAX_INTENTOS_BUSQUEDA = 10;
+
+    [Header("Estadísticas de enemigo")]
+    [field: SerializeField] public string id_monstruos { get; private set; }
+    [field: SerializeField] public short desafio { get; private set; }
+
     private TileCollisionChecker collisionChecker;
 
     public override void Awake()

@@ -4,6 +4,11 @@ using System.Collections.Generic;
 [RequireComponent(typeof(TileCollisionChecker))]
 public class PlayerComponent : Entidad
 {
+    [Header("Estadísticas de jugador")]
+    [field: SerializeField] public string id_jugadores { get; private set; }
+    [field: SerializeField] public short clase { get; private set; }
+    [field: SerializeField] public short nivel { get; private set; }
+
     private bool esMiTurno = false;
     private TileCollisionChecker collisionChecker;
 

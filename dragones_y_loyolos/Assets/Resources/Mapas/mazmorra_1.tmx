@@ -4,7 +4,7 @@
   <property name="idSala" type="int" value="1"/>
  </properties>
  <tileset firstgid="1" source="Dungeon_tileset.tsx"/>
- <layer id="2" name="Background" width="30" height="20" offsetx="0" offsety="1">
+ <layer id="2" name="Background" width="30" height="20">
   <data encoding="csv">
    <chunk x="-16" y="-16" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -170,7 +170,7 @@
 </chunk>
   </data>
  </layer>
- <layer id="3" name="Background_deco" width="30" height="20" offsetx="0" offsety="1">
+ <layer id="3" name="Background_deco" width="30" height="20">
   <data encoding="csv">
    <chunk x="-16" y="-16" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -336,14 +336,14 @@
 </chunk>
   </data>
  </layer>
- <objectgroup color="#00cf00" id="6" name="Entidades" class="Entidad" offsetx="0" offsety="-1">
+ <objectgroup color="#00cf00" id="6" name="Entidades" class="Entidad">
   <object id="5" template="Entidad_tiled.tx" x="72" y="-24">
    <properties>
     <property name="id_entidades" type="int" value="1"/>
    </properties>
   </object>
  </objectgroup>
- <layer id="4" name="Walls" width="30" height="20" offsetx="0" offsety="1">
+ <layer id="4" name="Walls" width="30" height="20">
   <data encoding="csv">
    <chunk x="-16" y="-16" width="16" height="16">
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -509,7 +509,7 @@
 </chunk>
   </data>
  </layer>
- <objectgroup color="#a519be" id="5" name="Puertas" class="Puerta" offsetx="0" offsety="-1">
+ <objectgroup color="#a519be" id="5" name="Puertas" class="Puerta">
   <object id="6" template="Puerta_tiled.tx" x="152" y="-56">
    <properties>
     <property name="destinoX" type="int" value="3"/>
@@ -518,7 +518,7 @@
    </properties>
   </object>
  </objectgroup>
- <layer id="1" name="Frontground" width="30" height="20" offsetx="0" offsety="1">
+ <layer id="1" name="Frontground" width="30" height="20">
   <data encoding="csv"/>
  </layer>
 </map>

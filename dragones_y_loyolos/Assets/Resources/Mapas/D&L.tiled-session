@@ -29,11 +29,11 @@
                 5,
                 6
             ],
-            "scale": 0.5,
-            "selectedLayer": 4,
+            "scale": 1.5,
+            "selectedLayer": 5,
             "viewCenter": {
-                "x": 331,
-                "y": 395
+                "x": 149.66666666666669,
+                "y": -31
             }
         },
         "mazmorra_2.tmx": {
@@ -42,7 +42,7 @@
                 6
             ],
             "scale": 5.5,
-            "selectedLayer": 4,
+            "selectedLayer": 3,
             "viewCenter": {
                 "x": 93.36363636363636,
                 "y": -129.9090909090909
@@ -54,7 +54,7 @@
                 5
             ],
             "scale": 3,
-            "selectedLayer": 3,
+            "selectedLayer": 4,
             "viewCenter": {
                 "x": 89.83333333333334,
                 "y": 82.83333333333331
