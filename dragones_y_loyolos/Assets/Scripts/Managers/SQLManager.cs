@@ -241,4 +241,23 @@ public class SQLManager : MonoBehaviour
 
         return acciones;
     }
+
+    public int ObtenerVidaMaximaDeEntidad(int id_entidad)
+    {
+        try 
+        {
+            // Buscamos el HP que tenía la entidad en el momento exacto de su creación (el timestep más antiguo)
+            var registro = connection.Query<StatsBaseEntidadesSQL>(
+                "SELECT hp FROM Stats_base_entidades WHERE id_entidades = ? ORDER BY timestep ASC, subTimestep ASC LIMIT 1", 
+                id_entidad).FirstOrDefault();
+                
+            if (registro != null) return registro.hp;
+        }
+        catch (System.Exception e)
+        {
+            Debug.LogError($"[SQLManager] Error al obtener la vida máxima de la entidad {id_entidad}: {e.Message}");
+        }
+        
+        return 10;
+    }
 }

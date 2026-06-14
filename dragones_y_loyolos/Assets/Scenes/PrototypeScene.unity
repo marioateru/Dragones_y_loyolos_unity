@@ -57734,7 +57734,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 90f598bdff1b945258e75b094977d938, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SQLManager
-  forzarReinicioBD: 0
+  forzarReinicioBD: 1
 --- !u!4 &905382505
 Transform:
   m_ObjectHideFlags: 0

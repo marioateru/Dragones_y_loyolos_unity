@@ -50,6 +50,12 @@ public abstract class Entidad : MonoBehaviour
         this.xPos = xInicial;
         this.yPos = yInicial;
         ActualizarPosicionVisual();
+
+        // EL SALVAVIDAS: Si el SQL nos dice que cargamos con 0 HP, ocultamos el sprite directamente.
+        if (IsDead())
+        {
+            gameObject.SetActive(false);
+        }
     }
 
     public bool IsDead() => hp <= 0;
@@ -114,6 +120,7 @@ public abstract class Entidad : MonoBehaviour
         if (tipoInteraccion == Acciones.Atacar)
         {
             this.hp -= valorData;
+            // Cuando muere en combate, se apaga.
             if (IsDead()) gameObject.SetActive(false);
         }
         else if (tipoInteraccion == Acciones.Consumir)
@@ -124,6 +131,7 @@ public abstract class Entidad : MonoBehaviour
 
     private void ActualizarPosicionVisual()
     {
+        // LA MANERA "X": Exactamente el centro geométrico de la celda en Tiled
         transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0f);
     }
 }
