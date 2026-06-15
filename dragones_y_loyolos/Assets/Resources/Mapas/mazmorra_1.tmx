@@ -337,7 +337,7 @@
   </data>
  </layer>
  <objectgroup color="#00cf00" id="6" name="Entidades" class="Entidad">
-  <object id="5" template="Entidad_tiled.tx" x="72" y="-24">
+  <object id="5" template="Entidad_tiled.tx" x="88" y="8">
    <properties>
     <property name="id_entidades" type="int" value="1"/>
    </properties>

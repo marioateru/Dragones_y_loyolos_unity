@@ -1,5 +1,5 @@
 {
-    "activeFile": "mazmorra_2.tmx",
+    "activeFile": "mazmorra_1.tmx",
     "expandedProjectPaths": [
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
@@ -26,20 +26,20 @@
         },
         "mazmorra_1.tmx": {
             "expandedObjectLayers": [
-                5,
-                6
+                6,
+                5
             ],
             "scale": 8,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 318.5625,
-                "y": 71.4375
+                "x": 85.9375,
+                "y": -26.4375
             }
         },
         "mazmorra_2.tmx": {
             "expandedObjectLayers": [
-                5,
-                6
+                6,
+                5
             ],
             "scale": 0.5,
             "selectedLayer": 2,
@@ -77,9 +77,9 @@
     "property.type": "int",
     "recentFiles": [
         "Dungeon_tileset.tsx",
-        "mazmorra_1.tmx",
         "plantilla.tmx",
         "mazmorra_2.tmx",
+        "mazmorra_1.tmx",
         "dungeon_2.tmx",
         "dungeon_0.tmx"
     ],

@@ -163,10 +163,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cd3aa9ad8001343e58cc788fa7eddd41, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ML_Core
-  forzarModoML_EnEditor: 0
+  forzarModoML_EnEditor: 1
   operacionesPorSegundo: -1
   acumuladorOperaciones: 0
-  limiteEjecuciones: 10
+  limiteEjecuciones: 1
   ejecucionesActuales: 0
   operacionesEnMemoria: 0
   limiteOperacionesGuardado: 5000

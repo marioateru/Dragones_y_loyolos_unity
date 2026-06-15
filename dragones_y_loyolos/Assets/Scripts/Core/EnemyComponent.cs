@@ -108,8 +108,12 @@ public class EnemyComponent : Entidad
                 int checkX = origenX + x;
                 int checkY = origenY + y;
 
-                if (collisionChecker.HayMuro(checkX, checkY)) continue;
+                // FIX ANTI-ATASCOS: Evita atravesar esquinas
+                if (collisionChecker.HayMuroEnRuta(origenX, origenY, checkX, checkY)) continue;
                 if (gameManager.ObtenerEntidadEnCasilla(checkX, checkY) != null) continue;
+                
+                // FIX OUT OF BOUNDS: Las puertas se consideran muros para los enemigos
+                if (gameManager.salaActual.ObtenerPuerta(checkX, checkY) != null) continue;
 
                 int distAlJugador = Mathf.Max(Mathf.Abs(checkX - targetX), Mathf.Abs(checkY - targetY));
 
@@ -151,9 +155,14 @@ public class EnemyComponent : Entidad
                 int checkX = origenX + x;
                 int checkY = origenY + y;
 
-                if (!collisionChecker.HayMuro(checkX, checkY) && gameManager.ObtenerEntidadEnCasilla(checkX, checkY) == null)
+                // FIX ANTI-ATASCOS
+                if (!collisionChecker.HayMuroEnRuta(origenX, origenY, checkX, checkY) && gameManager.ObtenerEntidadEnCasilla(checkX, checkY) == null)
                 {
-                    casillasValidas.Add(new Vector2Int(checkX, checkY));
+                    // FIX OUT OF BOUNDS: Jamás elegir una casilla con puerta
+                    if (gameManager.salaActual.ObtenerPuerta(checkX, checkY) == null)
+                    {
+                        casillasValidas.Add(new Vector2Int(checkX, checkY));
+                    }
                 }
             }
         }
@@ -169,7 +178,7 @@ public class EnemyComponent : Entidad
 
     private void OnDrawGizmosSelected()
     {
-        Gizmos.color = new Color(1f, 0.2f, 0.2f, 0.6f); // Rojo semitransparente
+        Gizmos.color = new Color(1f, 0.2f, 0.2f, 0.6f);
 
         float tamanoLado = (rangoVision * 2) + 1; 
         

@@ -40,9 +40,15 @@ public class ModRebuilder : EditorWindow
             foreach (var objeto in objetosSalaImportada)
             {
                 var propiedadesObjeto = objeto.GetComponent<SuperCustomProperties>();
-                if (propiedadesObjeto != null && propiedadesObjeto.TryGetCustomProperty("id_entidades", out CustomProperty pId))
+                if (propiedadesObjeto != null)
                 {
-                    if (int.TryParse(pId.m_Value, out int idEntidad))
+                    int idEntidad = -1;
+                    
+                    if (propiedadesObjeto.TryGetCustomProperty("id_entidades", out CustomProperty p1)) int.TryParse(p1.m_Value, out idEntidad);
+                    else if (propiedadesObjeto.TryGetCustomProperty("id_entidad", out CustomProperty p2)) int.TryParse(p2.m_Value, out idEntidad);
+                    else if (propiedadesObjeto.TryGetCustomProperty("idEntidad", out CustomProperty p3)) int.TryParse(p3.m_Value, out idEntidad);
+
+                    if (idEntidad > 0)
                     {
                         if (idEntidad == 1) 
                         {
@@ -54,7 +60,6 @@ public class ModRebuilder : EditorWindow
                             jugadorEncontrado = true;
                         }
 
-                        // CORRECCIÓN: Conversión correcta del espacio local negativo de ST2U a enteros positivos de Grid
                         int gridX = Mathf.FloorToInt(objeto.transform.localPosition.x);
                         int gridY = Mathf.FloorToInt(-objeto.transform.localPosition.y);
 
@@ -76,7 +81,7 @@ public class ModRebuilder : EditorWindow
 
         if (!jugadorEncontrado)
         {
-            Debug.LogError("<color=red><b>[Rebuilder ERROR] ¡No se encontró ningún Jugador (id_entidades = 1) en ningún mapa!</b></color>");
+            Debug.LogWarning("<color=red><b>[Rebuilder ERROR] ¡No se encontró ningún Jugador (id_entidades = 1) en ningún mapa!</b></color>\n(Comprueba en Tiled que realmente haya un objeto con la propiedad id_entidades a 1)");
         }
         else
         {

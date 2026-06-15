@@ -255,6 +255,9 @@ public class GameManager : MonoBehaviour
         if (indiceEntidadPensando < entityQueue.Count)
         {
             Entidad actorTurno = entityQueue[indiceEntidadPensando];
+            
+            actorTurno.estaDefendido = false; 
+            
             estadoActual = GameState.EsperandoEleccion;
             actorTurno.ChooseAction();
         }

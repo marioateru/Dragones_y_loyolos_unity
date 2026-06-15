@@ -3,6 +3,7 @@ using System.Collections.Generic;
 
 public abstract class Entidad : MonoBehaviour
 {
+    private const float TILE_CENTER_OFFSET = 0.5f;
     [Header("Referencias SQL")]
     [field: SerializeField] public int id_entidades { get; private set; } 
     [field: SerializeField] public int id_stats_base { get; private set; } 
@@ -16,7 +17,7 @@ public abstract class Entidad : MonoBehaviour
     [field: SerializeField] public int inteligencia { get; private set; }
     [field: SerializeField] public int sabiduria { get; private set; }
     [field: SerializeField] public int carisma { get; private set; }
-    [field: SerializeField] public int velocidad { get; protected set; } = 6; 
+    [field: SerializeField] public int velocidad { get; protected set; } 
 
     [Header("Posición Tilemap")]
     [field: SerializeField] public float xPos { get; protected set; }
@@ -51,11 +52,7 @@ public abstract class Entidad : MonoBehaviour
         this.yPos = yInicial;
         ActualizarPosicionVisual();
 
-        // EL SALVAVIDAS: Si el SQL nos dice que cargamos con 0 HP, ocultamos el sprite directamente.
-        if (IsDead())
-        {
-            gameObject.SetActive(false);
-        }
+        if (IsDead()) gameObject.SetActive(false);
     }
 
     public bool IsDead() => hp <= 0;
@@ -109,8 +106,8 @@ public abstract class Entidad : MonoBehaviour
                 break;
                 
             case Acciones.Consumir:
-                int cura = DnD_Rules.LanzarDados(1, 4);
-                RecibirInteraccion(this, Acciones.Consumir, cura);
+                int cantidadACurar = DnD_Rules.LanzarDados(1, 8);
+                RecibirInteraccion(this, Acciones.Consumir, cantidadACurar);
                 break;
         }
     }
@@ -120,7 +117,6 @@ public abstract class Entidad : MonoBehaviour
         if (tipoInteraccion == Acciones.Atacar)
         {
             this.hp -= valorData;
-            // Cuando muere en combate, se apaga.
             if (IsDead()) gameObject.SetActive(false);
         }
         else if (tipoInteraccion == Acciones.Consumir)
@@ -131,7 +127,6 @@ public abstract class Entidad : MonoBehaviour
 
     private void ActualizarPosicionVisual()
     {
-        // LA MANERA "X": Exactamente el centro geométrico de la celda en Tiled
-        transform.position = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0f);
+        transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, -yPos - TILE_CENTER_OFFSET, 0f);
     }
 }
