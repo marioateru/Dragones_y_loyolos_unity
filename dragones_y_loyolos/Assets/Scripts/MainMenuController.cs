@@ -11,7 +11,7 @@ public class MainMenuController : MonoBehaviour
     public GameObject panelPrincipal;
     public GameObject panelNuevaPartida;
     public GameObject panelCargarPartida;
-    public TMP_InputField inputNombrePartida; // Si usas TMPro Input, cámbialo a TMPro.TMP_InputField
+    public TMP_InputField inputNombrePartida; 
     
     [Header("UI Cargar")]
     public Transform contenedorPartidas;
@@ -31,6 +31,12 @@ public class MainMenuController : MonoBehaviour
         {
             btnAbrirMenuCargar.gameObject.SetActive(archivosBD.Length > 0);
         }
+
+        if (ML_Core.IsMLMode)
+        {
+            Debug.Log("<color=yellow>[Menu Principal]</color> Modo ML. Iniciando simulación automáticamente...");
+            ConfirmarNuevaPartida();
+        }
     }
 
     public void MostrarNuevaPartida()
@@ -41,24 +47,38 @@ public class MainMenuController : MonoBehaviour
 
     public void ConfirmarNuevaPartida()
     {
-        string nombre = inputNombrePartida.text;
-        if (string.IsNullOrWhiteSpace(nombre)) 
+        string nombreFisicoBD = "";
+        string nombre = "";
+
+        // ¡EL FIX!: Separamos la lógica si es jugador o es la IA
+        if (!ML_Core.IsMLMode)
         {
-            nombre = "D&L " + DateTime.Now.ToString("yyyy-MM-dd");
+            nombre = inputNombrePartida.text;
+            if (string.IsNullOrWhiteSpace(nombre)) 
+            {
+                nombre = "D&L " + DateTime.Now.ToString("yyyy-MM-dd");
+            }
+
+            nombreFisicoBD = prefijoGuardado + DateTime.Now.Ticks + ".db";
+            
+            PlayerPrefs.SetString("DisplayName_" + nombreFisicoBD, nombre);
+            PlayerPrefs.SetString("Date_" + nombreFisicoBD, DateTime.Now.ToString("dd/MM/yyyy - HH:mm:ss"));
+            PlayerPrefs.Save();
+
+            GameSession.dbActiva = nombreFisicoBD;
+            GameSession.nombrePartidaActiva = nombre;
+        }
+        else
+        {
+            nombreFisicoBD = GameSession.dbActiva;
+            nombre = GameSession.nombrePartidaActiva;
         }
 
-        string nombreFisicoBD = prefijoGuardado + DateTime.Now.Ticks + ".db";
         string plantillaPath = Path.Combine(Application.streamingAssetsPath, "dragones_y_loyolos.db");
         string nuevoPath = Path.Combine(Application.persistentDataPath, nombreFisicoBD);
         
-        File.Copy(plantillaPath, nuevoPath);
-
-        PlayerPrefs.SetString("DisplayName_" + nombreFisicoBD, nombre);
-        PlayerPrefs.SetString("Date_" + nombreFisicoBD, DateTime.Now.ToString("dd/MM/yyyy - HH:mm:ss"));
-        PlayerPrefs.Save();
-
-        GameSession.dbActiva = nombreFisicoBD;
-        GameSession.nombrePartidaActiva = nombre;
+        File.Copy(plantillaPath, nuevoPath, true);
+        
         SceneManager.LoadScene("GameScene"); 
     }
 
@@ -67,7 +87,6 @@ public class MainMenuController : MonoBehaviour
         panelPrincipal.SetActive(false);
         panelCargarPartida.SetActive(true);
 
-        // Desconectamos los hijos viejos antes de destruirlos para evitar que la UI se solape
         foreach (Transform child in contenedorPartidas) 
         {
             child.SetParent(null);
@@ -84,7 +103,6 @@ public class MainMenuController : MonoBehaviour
 
             GameObject btnObjeto = Instantiate(prefabBotonPartida, contenedorPartidas);
             
-            // LA MAGIA ANTICRASHES: Soportamos tanto UI clásica como TextMeshPro
             string textoFinal = $"{nombreMostrar}\n<size=12>{fechaGuardado}</size>";
             var textoLegacy = btnObjeto.GetComponentInChildren<Text>();
             if (textoLegacy != null) 
@@ -97,7 +115,6 @@ public class MainMenuController : MonoBehaviour
                 if (textoTMP != null) textoTMP.text = textoFinal;
             }
             
-            // Botón principal de Cargar
             Button btnCargar = btnObjeto.GetComponent<Button>();
             if (btnCargar != null)
             {
@@ -108,7 +125,6 @@ public class MainMenuController : MonoBehaviour
                 });
             }
 
-            // Sub-Botón de Borrar
             Transform hijoBorrar = btnObjeto.transform.Find("BtnBorrar");
             if (hijoBorrar != null)
             {

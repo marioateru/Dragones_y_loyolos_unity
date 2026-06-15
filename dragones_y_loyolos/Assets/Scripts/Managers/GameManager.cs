@@ -27,6 +27,8 @@ public class GameManager : MonoBehaviour
     }
     private GameState estadoActual = GameState.Inicializando;
     private GameState estadoPrevioPausa;
+    [Header("Forzar modo ML")]
+    public bool forzarModoML_EnEditor = false;
 
     [Header("Sala inicial")]
     public int idSalaInicial = 0;
@@ -110,7 +112,24 @@ public class GameManager : MonoBehaviour
         int safeGuard = 0;
         bool procesandoLogica = true;
         
-        while (procesandoLogica && safeGuard < 1000)
+        // LIMITADOR INTELIGENTE DE OPERACIONES
+        int limiteBucles = 100; // Normal
+
+        if (ML_Core.IsMLMode && ML_Core.Instancia != null)
+        {
+            if (ML_Core.Instancia.operacionesPorSegundo <= 0)
+            {
+                limiteBucles = 500000; // Turbo
+            }
+            else
+            {
+                ML_Core.Instancia.acumuladorOperaciones += ML_Core.Instancia.operacionesPorSegundo * Time.deltaTime;
+                limiteBucles = Mathf.FloorToInt(ML_Core.Instancia.acumuladorOperaciones);
+                ML_Core.Instancia.acumuladorOperaciones -= limiteBucles;
+            }
+        }
+
+        while (procesandoLogica && safeGuard < limiteBucles)
         {
             safeGuard++;
             switch (estadoActual)
@@ -120,6 +139,20 @@ public class GameManager : MonoBehaviour
                 case GameState.AvanzandoCola: PedirAccionASiguienteEntidad(); break;
                 case GameState.ProcesandoTurno: ProcesarAcciones(); break;
                 case GameState.FinalizandoTurno: LimpiarYComprobarGuardado(); break;
+            }
+        }
+
+        if (jugadorPrincipal != null && jugadorPrincipal.IsDead())
+        {
+            if (ML_Core.IsMLMode)
+            {
+                ML_Core.Instancia.GestionarMuerteBot();
+            }
+            else
+            {
+                estadoActual = GameState.GameOver;
+                GuardarPartidaEnDisco(); 
+                InGameUIController.Instancia?.MostrarGameOver();
             }
         }
     }
@@ -288,7 +321,7 @@ public class GameManager : MonoBehaviour
         actionQueue.Clear();
         timestepActual++;
 
-        if (timestepActual % turnosParaAutoguardado == 0) GuardarPartidaEnDisco();
+        if (!ML_Core.IsMLMode && timestepActual % turnosParaAutoguardado == 0) GuardarPartidaEnDisco();
 
         estadoActual = GameState.PreparandoTurno;
     }
@@ -347,6 +380,11 @@ public class GameManager : MonoBehaviour
         return null;
     }
 
+    public List<Entidad> ObtenerTodasLasEntidades()
+    {
+        return entidadesEnMapa;
+    }
+
     public void RecargarPartidaDesdeTimestep(int targetTimestep)
     {
         sqlManager.RollbackATimestep(targetTimestep);
@@ -374,9 +412,14 @@ public class GameManager : MonoBehaviour
     private void OnDrawGizmos()
     {
         if (!drawGizmos || jugadorPrincipal == null) return;
+
+        float tamanoHigh = (rangoHighPriority * 2) + 1; 
+        float tamanoLow = (rangoLowPriority * 2) + 1; 
+
         Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
-        Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoHighPriority);
+        Gizmos.DrawWireCube(jugadorPrincipal.transform.position, new Vector3(tamanoHigh, tamanoHigh, 0f));
+        
         Gizmos.color = new Color(1f, 1f, 0f, 0.15f);
-        Gizmos.DrawWireSphere(jugadorPrincipal.transform.position, rangoLowPriority);
+        Gizmos.DrawWireCube(jugadorPrincipal.transform.position, new Vector3(tamanoLow, tamanoLow, 0f));
     }
 }

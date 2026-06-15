@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="6">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="9">
  <properties>
   <property name="idSala" type="int" value="2"/>
  </properties>
@@ -193,9 +193,24 @@
   </data>
  </layer>
  <objectgroup color="#00d900" id="6" name="Entidades">
-  <object id="5" template="Entidad_tiled.tx" x="152" y="-168">
+  <object id="5" template="Entidad_tiled.tx" x="152" y="8">
    <properties>
-    <property name="id_entidades" type="int" value="2"/>
+    <property name="id_entidades" type="int" value="12"/>
+   </properties>
+  </object>
+  <object id="6" template="Entidad_tiled.tx" x="-184" y="8">
+   <properties>
+    <property name="id_entidades" type="int" value="9"/>
+   </properties>
+  </object>
+  <object id="7" template="Entidad_tiled.tx" x="-184" y="24">
+   <properties>
+    <property name="id_entidades" type="int" value="10"/>
+   </properties>
+  </object>
+  <object id="8" template="Entidad_tiled.tx" x="8" y="264">
+   <properties>
+    <property name="id_entidades" type="int" value="11"/>
    </properties>
   </object>
  </objectgroup>

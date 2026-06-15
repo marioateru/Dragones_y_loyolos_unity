@@ -53,17 +53,14 @@ public class SQLManager : MonoBehaviour
         return ultimoTimestep != null ? ultimoTimestep.timestep : 0;
     }
 
-    // NUEVA FUNCIÓN: Lee directamente de la tabla intermedia para encontrar la sala del jugador
     public int ObtenerSalaDelJugador(int timestep, int salaPorDefecto)
     {
         try
         {
-            // 1. Obtenemos el ID de la entidad que corresponde al jugador
             var jugador = connection.Query<JugadoresSQL>("SELECT id_entidades FROM Jugadores LIMIT 1").FirstOrDefault();
             
             if (jugador != null)
             {
-                // 2. Buscamos en la tabla intermedia en qué sala estaba esa entidad en este timestep
                 var ubicacion = connection.Query<EntidadesSalaPropositoContenidoSQL>(
                     "SELECT id_sala_proposito_contenido FROM Entidades_sala_proposito_contenido WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1",
                     jugador.id_entidades, timestep).FirstOrDefault();
