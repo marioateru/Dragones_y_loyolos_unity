@@ -13,15 +13,16 @@ public class SQLManager : MonoBehaviour
 
     void Awake()
     {
-        string dbPath = string.Format("{0}/{1}", Application.streamingAssetsPath, "dragones_y_loyolos.db");
-        string filepath = string.Format("{0}/{1}", Application.persistentDataPath, "dragones_y_loyolos.db");
+        if (string.IsNullOrEmpty(GameSession.dbActiva)) GameSession.dbActiva = "Partida_Test_Debug.db";
+
+        string dbPath = string.Format("{0}/{1}", Application.streamingAssetsPath, "dragones_y_loyolos.db"); // Tu plantilla original
+        string filepath = string.Format("{0}/{1}", Application.persistentDataPath, GameSession.dbActiva);
         
-        // Para forzar a reconstruir la base de datos en caso de que algo vaya mal.
         #if UNITY_EDITOR
-        if (forzarReinicioBD && System.IO.File.Exists(filepath))
+        if (forzarReinicioBD && System.IO.File.Exists(filepath) && GameSession.dbActiva == "Partida_Test_Debug.db")
         {
             System.IO.File.Delete(filepath);
-            Debug.Log("[SQLManager] BD persistente borrada. Cargando copia limpia desde StreamingAssets.");
+            Debug.Log("[SQLManager] BD de test borrada. Cargando limpia.");
         }
         #endif
 
@@ -30,7 +31,6 @@ public class SQLManager : MonoBehaviour
         }
 
         connection = new SQLiteConnection(filepath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
-
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_sala ON Entidades_sala_proposito_contenido (id_sala_proposito_contenido, timestep);");
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_tiempo ON Entidades_sala_proposito_contenido (id_entidades, timestep, subTimestep);");
     }
@@ -259,5 +259,27 @@ public class SQLManager : MonoBehaviour
         }
         
         return 10;
+    }
+
+    public void RollbackATimestep(int targetTimestep)
+    {
+        connection.Execute("DELETE FROM Entidades_sala_proposito_contenido WHERE timestep > ?", targetTimestep);
+        connection.Execute("DELETE FROM Tiempo_acciones_entidades WHERE timestep > ?", targetTimestep);
+        connection.Execute("DELETE FROM Stats_base_entidades WHERE timestep > ?", targetTimestep);
+    }
+
+    // Busca automáticamente el último turno en el que el jugador estaba vivo
+    public int ObtenerUltimoTimestepConVida()
+    {
+        var jugador = connection.Query<JugadoresSQL>("SELECT id_entidades FROM Jugadores LIMIT 1").FirstOrDefault();
+        if (jugador != null)
+        {
+            var registro = connection.Query<StatsBaseEntidadesSQL>(
+                "SELECT timestep FROM Stats_base_entidades WHERE id_entidades = ? AND hp > 0 ORDER BY timestep DESC, subTimestep DESC LIMIT 1",
+                jugador.id_entidades).FirstOrDefault();
+                
+            if (registro != null) return registro.timestep;
+        }
+        return 1;
     }
 }

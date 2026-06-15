@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class AccionEnMemoria {
     public int timestep;
@@ -14,10 +15,18 @@ public class AccionEnMemoria {
 
 public class GameManager : MonoBehaviour
 {
-    private enum GameState { 
-        Inicializando, PreparandoTurno, EsperandoEleccion, AvanzandoCola, ProcesandoTurno, FinalizandoTurno 
+    public enum GameState { 
+        Inicializando, 
+        PreparandoTurno, 
+        EsperandoEleccion, 
+        AvanzandoCola, 
+        ProcesandoTurno, 
+        FinalizandoTurno, 
+        GameOver, 
+        Pausa 
     }
     private GameState estadoActual = GameState.Inicializando;
+    private GameState estadoPrevioPausa;
 
     [Header("Sala inicial")]
     public int idSalaInicial = 0;
@@ -67,6 +76,37 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        var keyboard = Keyboard.current;
+        if (keyboard != null && (keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame))
+        {
+            if (estadoActual != GameState.GameOver && estadoActual != GameState.Inicializando) 
+            {
+                InGameUIController ui = InGameUIController.Instancia != null 
+                    ? InGameUIController.Instancia 
+                    : FindFirstObjectByType<InGameUIController>(FindObjectsInactive.Include);
+                
+                if (ui != null)
+                {
+                    if (estadoActual == GameState.Pausa)
+                    {
+                        estadoActual = estadoPrevioPausa; 
+                        ui.AlternarPausa(false);
+                    }
+                    else
+                    {
+                        estadoPrevioPausa = estadoActual; 
+                        estadoActual = GameState.Pausa;   
+                        ui.AlternarPausa(true);
+                    }
+                }
+            }
+        }
+
+        if (estadoActual == GameState.GameOver || estadoActual == GameState.Pausa) 
+        {
+            return; 
+        }
+
         int safeGuard = 0;
         bool procesandoLogica = true;
         
@@ -231,6 +271,14 @@ public class GameManager : MonoBehaviour
             actor.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
         }
         
+        if (jugadorPrincipal != null && jugadorPrincipal.IsDead())
+        {
+            estadoActual = GameState.GameOver;
+            GuardarPartidaEnDisco();
+            InGameUIController.Instancia?.MostrarGameOver();
+            return;
+        }
+        
         if (salaActual != null) estadoActual = GameState.FinalizandoTurno;
     }
 
@@ -297,6 +345,30 @@ public class GameManager : MonoBehaviour
                 return entidad;
         }
         return null;
+    }
+
+    public void RecargarPartidaDesdeTimestep(int targetTimestep)
+    {
+        sqlManager.RollbackATimestep(targetTimestep);
+        this.timestepActual = targetTimestep;
+        this.subTimestepActual = 0;
+
+        actionQueue.Clear();
+        entityQueue.Clear();
+        historialPendiente.Clear();
+
+        foreach (var entidad in entidadesEnMapa) { if (entidad != null) Destroy(entidad.gameObject); }
+        entidadesEnMapa.Clear();
+
+        jugadorPrincipal = null; 
+
+        if (salaActual != null) Destroy(salaActual.gameObject);
+
+        idSalaInicial = sqlManager.ObtenerSalaDelJugador(timestepActual, idSalaInicial);
+        CargarSalaInicial();
+        GenerarEntidadesDesdeSQL();
+
+        estadoActual = GameState.PreparandoTurno;
     }
 
     private void OnDrawGizmos()

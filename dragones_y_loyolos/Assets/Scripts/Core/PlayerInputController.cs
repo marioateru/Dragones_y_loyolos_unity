@@ -17,6 +17,9 @@ public class PlayerInputController : MonoBehaviour
 
     void Update()
     {
+        // Cosa gorrina para que no entre la interacción cuando el juego se pausa.
+        if (Time.timeScale == 0f) return;
+
         if (jugador == null || !jugador.EsSuTurno()) return;
 
         var keyboard = Keyboard.current;
@@ -52,11 +55,10 @@ public class PlayerInputController : MonoBehaviour
         if (mapGrid == null) return;
 
         Vector2 mousePosScreen = mouse.position.ReadValue();
-        Vector2 mouseWorldPos = Camera.main.ScreenToWorldPoint(mouse.position.ReadValue());
-
-        Vector3Int cellPos = mapGrid.WorldToCell(mouseWorldPos);
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(new Vector3(mousePosScreen.x, mousePosScreen.y, Mathf.Abs(Camera.main.transform.position.z)));
+        
         int objetivoX = Mathf.FloorToInt(mouseWorldPos.x);
-        int objetivoY = Mathf.FloorToInt(-mouseWorldPos.y);
+        int objetivoY = Mathf.FloorToInt(-mouseWorldPos.y); 
 
         if (mouse.leftButton.wasPressedThisFrame)
         {
