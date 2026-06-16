@@ -112,14 +112,13 @@ public class GameManager : MonoBehaviour
         int safeGuard = 0;
         bool procesandoLogica = true;
         
-        // LIMITADOR INTELIGENTE DE OPERACIONES
-        int limiteBucles = 100; // Normal
+        int limiteBucles = 100; // Rápido
 
         if (ML_Core.IsMLMode && ML_Core.Instancia != null)
         {
             if (ML_Core.Instancia.operacionesPorSegundo <= 0)
             {
-                limiteBucles = 500000; // Turbo
+                limiteBucles = 5000000; // Todo lo rápido que pueda el procesador
             }
             else
             {

@@ -29,11 +29,11 @@
                 6,
                 5
             ],
-            "scale": 8,
+            "scale": 1.2237,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 85.9375,
-                "y": -26.4375
+                "x": 131.15959794067174,
+                "y": 163.8473482062597
             }
         },
         "mazmorra_2.tmx": {
@@ -41,11 +41,23 @@
                 6,
                 5
             ],
-            "scale": 0.5,
-            "selectedLayer": 2,
+            "scale": 11,
+            "selectedLayer": 4,
             "viewCenter": {
-                "x": 195,
-                "y": 127
+                "x": -182.5909090909091,
+                "y": 82.13636363636364
+            }
+        },
+        "mazmorra_3.tmx": {
+            "expandedObjectLayers": [
+                5,
+                9
+            ],
+            "scale": 3.5433,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 359.12849603476985,
+                "y": 343.0417971947055
             }
         },
         "plantilla.tmx": {
