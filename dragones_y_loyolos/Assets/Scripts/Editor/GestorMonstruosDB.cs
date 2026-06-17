@@ -7,20 +7,15 @@ using System.Linq;
 
 public class GestorMonstruosDB : EditorWindow
 {
-    // Sistema de Pestañas
     private int pestannaActual = 0;
     private readonly string[] pestannas = { "Gestor de Monstruos", "Explorador de Tablas" };
 
-    // ==========================================
-    // VARIABLES: GESTOR DE MONSTRUOS
-    // ==========================================
     private string nombreMonstruo = "Esqueleto";
     private int cantidadACrear = 50;
     private int salaInicial = 1;
     private int hp = 12, ac = 11;
     private int fue = 1, des = 2, con = 1, intel = -1, sab = 0, car = -2;
 
-    // VARIABLES: JUGADOR
     private bool jugadorCargado = false;
     private int j_hp, j_ac, j_fue, j_des, j_con, j_int, j_sab, j_car;
 
@@ -49,9 +44,6 @@ public class GestorMonstruosDB : EditorWindow
         public int carisma { get; set; }
     }
 
-    // ==========================================
-    // VARIABLES: EXPLORADOR DE TABLAS
-    // ==========================================
     private Vector2 scrollListaTablas;
     private Vector2 scrollInfoTabla;
     private Vector2 scrollDatosVisor;
@@ -94,9 +86,9 @@ public class GestorMonstruosDB : EditorWindow
         return new SQLiteConnection(dbPath, SQLiteOpenFlags.ReadWrite);
     }
 
-    // =========================================================================================
-    //                            PESTAÑA 2: EXPLORADOR DE TABLAS
-    // =========================================================================================
+    // ==========================================
+    // EXPLORADOR
+    // ==========================================
     private void MostrarPestannaExplorador()
     {
         EditorGUILayout.BeginHorizontal();
@@ -116,7 +108,6 @@ public class GestorMonstruosDB : EditorWindow
             }
         }
         GUI.backgroundColor = Color.white;
-        
         EditorGUILayout.EndScrollView();
         EditorGUILayout.EndVertical();
 
@@ -164,20 +155,13 @@ public class GestorMonstruosDB : EditorWindow
             
             scrollDatosVisor = EditorGUILayout.BeginScrollView(scrollDatosVisor, GUILayout.Height(200));
 
-            if (totalRegistrosTabla == 0)
-            {
-                GUILayout.Label("La tabla está vacía.", EditorStyles.centeredGreyMiniLabel);
-            }
+            if (totalRegistrosTabla == 0) GUILayout.Label("La tabla está vacía.", EditorStyles.centeredGreyMiniLabel);
             else
             {
                 string cabecera = string.Join(" │ ", infoColumnas.Select(c => c.name));
                 GUILayout.Label(cabecera, new GUIStyle(EditorStyles.boldLabel) { normal = new GUIStyleState() { textColor = new Color(0.3f, 0.8f, 1f) } });
                 GUILayout.Space(5);
-
-                foreach (string fila in registrosTablaActual)
-                {
-                    GUILayout.Label(fila);
-                }
+                foreach (string fila in registrosTablaActual) GUILayout.Label(fila);
             }
 
             EditorGUILayout.EndScrollView();
@@ -228,17 +212,15 @@ public class GestorMonstruosDB : EditorWindow
         finally { conn.Close(); }
     }
 
-    // =========================================================================================
-    //                            PESTAÑA 1: GESTOR DE MONSTRUOS Y JUGADOR
-    // =========================================================================================
+    // ==========================================
+    // GESTOR DE MONSTRUOS
+    // ==========================================
     private void MostrarPestannaGestor()
     {
         GUIStyle subtituloStyle = new GUIStyle(EditorStyles.boldLabel) { fontSize = 12 };
 
-        // 1. Crear Monstruos
         EditorGUILayout.LabelField("1. Crear Nuevos Monstruos", subtituloStyle);
         EditorGUILayout.BeginVertical("box");
-        
         nombreMonstruo = EditorGUILayout.TextField("Nombre (ID Visual)", nombreMonstruo);
         cantidadACrear = EditorGUILayout.IntSlider("Cantidad a instanciar", cantidadACrear, 1, 100);
         salaInicial = EditorGUILayout.IntField("Sala Inicial (Por defecto)", salaInicial);
@@ -271,7 +253,6 @@ public class GestorMonstruosDB : EditorWindow
 
         GUILayout.Space(15);
 
-        // 2. Editar Jugador
         EditorGUILayout.LabelField("2. Editar Stats del Jugador (ID 1)", subtituloStyle);
         EditorGUILayout.BeginVertical("box");
         if (!jugadorCargado)
@@ -306,7 +287,6 @@ public class GestorMonstruosDB : EditorWindow
 
         GUILayout.Space(15);
 
-        // 3. Visor de Conexiones
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField("3. Visor de Conexiones (SQL)", subtituloStyle);
         if (GUILayout.Button("Refrescar Datos", GUILayout.Width(120))) CargarBaseDeDatos();
@@ -332,7 +312,6 @@ public class GestorMonstruosDB : EditorWindow
 
         GUILayout.Space(15);
 
-        // 4. Zona Peligro
         EditorGUILayout.LabelField("4. Zona de Peligro", subtituloStyle);
         EditorGUILayout.BeginVertical("box");
         GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
@@ -360,13 +339,30 @@ public class GestorMonstruosDB : EditorWindow
                 j_con = stats.constitucion; j_int = stats.inteligencia; j_sab = stats.sabiduria; j_car = stats.carisma;
                 jugadorCargado = true;
             } 
-            else 
-            {
-                Debug.LogWarning("[Gestor] No se encontró al jugador (ID 1) en Stats_base_entidades.");
-            }
         } 
         catch (System.Exception e) { Debug.LogError("[Gestor] Error: " + e.Message); }
         finally { conn.Close(); }
+    }
+
+    // NUEVO: Garantiza que el jugador tenga TODO el enum en la DB en T=0
+    private void AsegurarAccionesJugador(SQLiteConnection conn)
+    {
+        try 
+        {
+            conn.Execute("DELETE FROM Acciones_entidades WHERE id_entidades = 1");
+            
+            // Lee todos los strings del Enum automáticamente
+            string[] todasLasAcciones = System.Enum.GetNames(typeof(Acciones));
+            
+            foreach(string acc in todasLasAcciones) 
+            {
+                conn.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, ?)", acc);
+            }
+        } 
+        catch (System.Exception e) 
+        {
+            Debug.LogError("[Gestor] Error asegurando acciones del jugador: " + e.Message);
+        }
     }
 
     private void GuardarStatsJugador()
@@ -383,8 +379,10 @@ public class GestorMonstruosDB : EditorWindow
             }
             conn.Execute("UPDATE Stats_base_entidades SET hp=?, ac=?, fuerza=?, destreza=?, constitucion=?, inteligencia=?, sabiduria=?, carisma=? WHERE id_entidades=1", j_hp, j_ac, j_fue, j_des, j_con, j_int, j_sab, j_car);
             
+            AsegurarAccionesJugador(conn);
+
             conn.Commit();
-            Debug.Log("<color=green>[SQL]</color> Stats del jugador guardadas con éxito.");
+            Debug.Log("<color=green>[SQL]</color> Stats y acciones del jugador guardadas con éxito.");
         } 
         catch (System.Exception e) 
         {
@@ -475,8 +473,10 @@ public class GestorMonstruosDB : EditorWindow
                 conn.Execute("DELETE FROM sqlite_sequence WHERE name='Acciones_entidades'");
             } catch {}
 
+            AsegurarAccionesJugador(conn);
+
             conn.Commit();
-            Debug.Log("<color=cyan>[SQL]</color> Tablas limpiadas con éxito. Solo queda el Jugador.");
+            Debug.Log("<color=cyan>[SQL]</color> Tablas limpiadas con éxito. Solo queda el Jugador con todas sus acciones.");
         }
         catch (System.Exception e) { conn.Rollback(); Debug.LogError("[SQL] Error limpiando tablas: " + e.Message); }
         finally { conn.Close(); CargarBaseDeDatos(); CargarListaTablas(); }
