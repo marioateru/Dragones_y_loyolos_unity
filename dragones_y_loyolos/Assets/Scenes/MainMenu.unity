@@ -164,7 +164,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ML_Core
   forzarModoML_EnEditor: 0
-  operacionesPorSegundo: -1
+  operacionesPorSegundo: 1000
   acumuladorOperaciones: 0
   limiteEjecuciones: 10
   ejecucionesActuales: 0

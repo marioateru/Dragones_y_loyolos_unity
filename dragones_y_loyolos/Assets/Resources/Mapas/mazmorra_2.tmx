@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="10">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="7" nextobjectid="21">
  <properties>
   <property name="idSala" type="int" value="2"/>
  </properties>
@@ -157,11 +157,11 @@
    <chunk x="16" y="0" width="16" height="16">
 363,363,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 363,260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,260,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-273,0,260,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,275,275,0,0,0,0,0,0,0,0,0,0,0,0,0,
-0,260,260,275,0,0,0,0,0,0,0,0,0,0,0,0,
-0,0,260,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,260,0,0,279,0,0,0,0,0,0,0,0,0,0,0,
+273,0,260,272,259,0,0,0,0,0,0,0,0,0,0,0,
+0,275,349,331,331,0,0,0,0,0,0,0,0,0,0,0,
+0,260,260,259,298,0,0,0,0,0,0,0,0,0,0,0,
+0,0,260,0,297,0,0,0,0,0,0,0,0,0,0,0,
 0,0,260,273,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,260,273,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,260,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -208,9 +208,39 @@
     <property name="id_entidades" type="int" value="10"/>
    </properties>
   </object>
-  <object id="8" template="Entidad_tiled.tx" x="8" y="264">
+  <object id="8" template="Entidad_tiled.tx" name="Aranna" x="8" y="264">
    <properties>
-    <property name="id_entidades" type="int" value="11"/>
+    <property name="id_entidades" type="int" value="162"/>
+   </properties>
+  </object>
+  <object id="11" template="Entidad_tiled.tx" name="Murcielago" x="328" y="8">
+   <properties>
+    <property name="id_entidades" type="int" value="45"/>
+   </properties>
+  </object>
+  <object id="12" template="Entidad_tiled.tx" name="Murcielago" x="328" y="28">
+   <properties>
+    <property name="id_entidades" type="int" value="46"/>
+   </properties>
+  </object>
+  <object id="13" template="Entidad_tiled.tx" name="Murcielago" x="264" y="24">
+   <properties>
+    <property name="id_entidades" type="int" value="47"/>
+   </properties>
+  </object>
+  <object id="14" template="Entidad_tiled.tx" name="Murcielago" x="328" y="152">
+   <properties>
+    <property name="id_entidades" type="int" value="48"/>
+   </properties>
+  </object>
+  <object id="17" template="Entidad_tiled.tx" name="Aranna" x="152" y="264">
+   <properties>
+    <property name="id_entidades" type="int" value="164"/>
+   </properties>
+  </object>
+  <object id="18" template="Entidad_tiled.tx" name="Aranna" x="152" y="280">
+   <properties>
+    <property name="id_entidades" type="int" value="163"/>
    </properties>
   </object>
  </objectgroup>
@@ -311,7 +341,7 @@
 0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
-0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,290,0,0,0,0,0,0,0,0,0,0,
@@ -348,7 +378,7 @@
 0,0,0,0,0,0,0,0,0,0,290,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,290,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,290,0,0,0,0,0,
-290,290,290,290,290,290,290,290,290,290,290,0,0,0,0,0,
+290,290,290,290,290,290,290,0,290,290,290,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
@@ -375,6 +405,20 @@
     <property name="destinoX" type="int" value="22"/>
     <property name="destinoY" type="int" value="21"/>
     <property name="idSalaDestino" type="int" value="3"/>
+   </properties>
+  </object>
+  <object id="19" template="Puerta_tiled.tx" x="120" y="344">
+   <properties>
+    <property name="destinoX" type="int" value="4"/>
+    <property name="destinoY" type="int" value="-10"/>
+    <property name="idSalaDestino" type="int" value="4"/>
+   </properties>
+  </object>
+  <object id="20" template="Puerta_tiled.tx" type="Puerta" x="344" y="72">
+   <properties>
+    <property name="destinoX" type="int" value="-3"/>
+    <property name="destinoY" type="int" value="-9"/>
+    <property name="idSalaDestino" type="int" value="5"/>
    </properties>
   </object>
  </objectgroup>

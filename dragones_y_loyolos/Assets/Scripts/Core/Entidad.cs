@@ -87,7 +87,7 @@ public abstract class Entidad : MonoBehaviour
                 if (objetivoAtaque != null)
                 {
                     bool desventaja = objetivoAtaque.EstaDefendido; 
-                    int d20 = DnD_Rules.LanzarD20(ventaja: false, desventaja: desventaja);
+                    int d20 = DnD_Rules.LanzarD20(tieneVentaja: false, tieneDesventaja: desventaja);
                     int tiradaAtaque = d20 + fuerza;
 
                     // FIXME: esta regla de cuando sacas 20 aciertas es un poco random, puede putear al jugador.

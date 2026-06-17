@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="10" nextobjectid="10">
+<map version="1.10" tiledversion="1.12.2" orientation="orthogonal" renderorder="right-down" width="30" height="20" tilewidth="16" tileheight="16" infinite="1" nextlayerid="10" nextobjectid="30">
  <properties>
   <property name="idSala" type="int" value="3"/>
  </properties>
@@ -282,7 +282,101 @@
   <data encoding="csv"/>
  </layer>
  <objectgroup color="#00ca00" id="5" name="Entidades" class="Entidad" tintcolor="#009800">
-  <object id="8" template="Entidad_tiled.tx" type="Entidad" x="8" y="8"/>
+  <object id="8" template="Entidad_tiled.tx" name="Esqueleto" type="Entidad" x="-232" y="-392">
+   <properties>
+    <property name="id_entidades" type="int" value="13"/>
+   </properties>
+  </object>
+  <object id="10" template="Entidad_tiled.tx" name="Esqueleto" type="Entidad" x="72" y="-404">
+   <properties>
+    <property name="id_entidades" type="int" value="14"/>
+   </properties>
+  </object>
+  <object id="11" template="Entidad_tiled.tx" name="Esqueleto" type="Entidad" x="-40" y="-164">
+   <properties>
+    <property name="id_entidades" type="int" value="16"/>
+   </properties>
+  </object>
+  <object id="12" template="Entidad_tiled.tx" name="Esqueleto" type="Entidad" x="-344" y="-20">
+   <properties>
+    <property name="id_entidades" type="int" value="17"/>
+   </properties>
+  </object>
+  <object id="13" template="Entidad_tiled.tx" name="Esqueleto" type="Entidad" x="72" y="184">
+   <properties>
+    <property name="id_entidades" type="int" value="18"/>
+   </properties>
+  </object>
+  <object id="14" template="Entidad_tiled.tx" name="Esqueleto" type="Entidad" x="424" y="-308">
+   <properties>
+    <property name="id_entidades" type="int" value="15"/>
+   </properties>
+  </object>
+  <object id="15" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="-132" y="-8">
+   <properties>
+    <property name="id_entidades" type="int" value="50"/>
+   </properties>
+  </object>
+  <object id="16" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="-120" y="-8">
+   <properties>
+    <property name="id_entidades" type="int" value="51"/>
+   </properties>
+  </object>
+  <object id="17" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="-132" y="4">
+   <properties>
+    <property name="id_entidades" type="int" value="49"/>
+   </properties>
+  </object>
+  <object id="18" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="216" y="-248">
+   <properties>
+    <property name="id_entidades" type="int" value="57"/>
+   </properties>
+  </object>
+  <object id="19" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="232" y="-248">
+   <properties>
+    <property name="id_entidades" type="int" value="58"/>
+   </properties>
+  </object>
+  <object id="20" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="216" y="-232">
+   <properties>
+    <property name="id_entidades" type="int" value="56"/>
+   </properties>
+  </object>
+  <object id="21" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="136" y="220">
+   <properties>
+    <property name="id_entidades" type="int" value="55"/>
+   </properties>
+  </object>
+  <object id="22" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="152" y="236">
+   <properties>
+    <property name="id_entidades" type="int" value="54"/>
+   </properties>
+  </object>
+  <object id="23" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="-264" y="280">
+   <properties>
+    <property name="id_entidades" type="int" value="53"/>
+   </properties>
+  </object>
+  <object id="24" template="Entidad_tiled.tx" name="Murcielago" type="Entidad" x="-280" y="268">
+   <properties>
+    <property name="id_entidades" type="int" value="52"/>
+   </properties>
+  </object>
+  <object id="25" template="Entidad_tiled.tx" name="Nemesis" type="Entidad" x="-120" y="396">
+   <properties>
+    <property name="id_entidades" type="int" value="202"/>
+   </properties>
+  </object>
+  <object id="26" template="Entidad_tiled.tx" name="Nemesis" type="Entidad" x="-24" y="-52">
+   <properties>
+    <property name="id_entidades" type="int" value="203"/>
+   </properties>
+  </object>
+  <object id="27" template="Entidad_tiled.tx" name="Nemesis" type="Entidad" x="-200" y="-388">
+   <properties>
+    <property name="id_entidades" type="int" value="204"/>
+   </properties>
+  </object>
  </objectgroup>
  <objectgroup color="#ac49d6" id="9" name="Puertas" class="Puerta">
   <object id="9" template="Puerta_tiled.tx" type="Puerta" x="376" y="344">
@@ -290,6 +384,20 @@
     <property name="destinoX" type="int" value="-12"/>
     <property name="destinoY" type="int" value="4"/>
     <property name="idSalaDestino" type="int" value="2"/>
+   </properties>
+  </object>
+  <object id="28" template="Puerta_tiled.tx" type="Puerta" x="-248" y="-296">
+   <properties>
+    <property name="destinoX" type="int" value="41"/>
+    <property name="destinoY" type="int" value="-22"/>
+    <property name="idSalaDestino" type="int" value="4"/>
+   </properties>
+  </object>
+  <object id="29" template="Puerta_tiled.tx" type="Puerta" x="40" y="172">
+   <properties>
+    <property name="destinoX" type="int" value="-11"/>
+    <property name="destinoY" type="int" value="28"/>
+    <property name="idSalaDestino" type="int" value="5"/>
    </properties>
   </object>
  </objectgroup>
@@ -309,7 +417,7 @@
 258,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 258,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 258,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-258,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 258,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 258,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 </chunk>
@@ -468,7 +576,7 @@
 0,0,0,0,0,0,258,0,0,0,0,0,0,0,0,258,
 0,0,0,0,0,0,258,0,0,0,0,0,0,0,0,258,
 258,258,258,258,258,258,258,0,0,0,0,0,0,0,0,258,
-258,258,258,258,258,258,0,0,0,0,0,0,0,0,0,258,
+258,258,0,258,258,258,0,0,0,0,0,0,0,0,0,258,
 0,0,0,0,0,258,0,0,0,258,258,258,258,258,258,258,
 0,0,0,0,0,258,0,258,258,258,0,0,0,0,0,0,
 0,0,0,0,0,258,0,258,0,0,0,0,0,0,0,0,

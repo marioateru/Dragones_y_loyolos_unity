@@ -26,8 +26,8 @@
         },
         "mazmorra_1.tmx": {
             "expandedObjectLayers": [
-                6,
-                5
+                5,
+                6
             ],
             "scale": 1.2237,
             "selectedLayer": 2,
@@ -38,26 +38,62 @@
         },
         "mazmorra_2.tmx": {
             "expandedObjectLayers": [
-                6,
-                5
+                5,
+                6
             ],
-            "scale": 11,
-            "selectedLayer": 4,
+            "scale": 2,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": -182.5909090909091,
-                "y": 82.13636363636364
+                "x": 338.75,
+                "y": -5.75
             }
         },
         "mazmorra_3.tmx": {
             "expandedObjectLayers": [
-                5,
-                9
+                9,
+                5
             ],
-            "scale": 1.7633,
+            "scale": 0.75,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 431.2935972324618,
-                "y": 402.3705552089831
+                "x": 170,
+                "y": 144.66666666666663
+            }
+        },
+        "mazmorra_4.tmx": {
+            "expandedObjectLayers": [
+                9,
+                5
+            ],
+            "scale": 5.5,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 492.2727272727273,
+                "y": 40.81818181818183
+            }
+        },
+        "mazmorra_5.tmx": {
+            "expandedObjectLayers": [
+                9,
+                5
+            ],
+            "scale": 0.33,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 1846.9696969696972,
+                "y": -413.6363636363635
+            }
+        },
+        "mazmorra_6.tmx": {
+            "expandedObjectLayers": [
+                9,
+                5
+            ],
+            "scale": 1.5,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 129.66666666666669,
+                "y": -50.33333333333337
             }
         },
         "plantilla.tmx": {

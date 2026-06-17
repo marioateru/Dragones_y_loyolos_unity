@@ -342,14 +342,14 @@
     <property name="id_entidades" type="int" value="1"/>
    </properties>
   </object>
-  <object id="8" template="Entidad_tiled.tx" x="8" y="-56">
+  <object id="8" template="Entidad_tiled.tx" name="Murcielago" x="8" y="-56">
    <properties>
-    <property name="id_entidades" type="int" value="8"/>
+    <property name="id_entidades" type="int" value="42"/>
    </properties>
   </object>
   <object id="11" template="Entidad_tiled.tx" x="296" y="88">
    <properties>
-    <property name="id_entidades" type="int" value="4"/>
+    <property name="id_entidades" type="int" value="43"/>
    </properties>
   </object>
   <object id="12" template="Entidad_tiled.tx" x="376" y="296">
@@ -359,7 +359,7 @@
   </object>
   <object id="13" template="Entidad_tiled.tx" x="-136" y="316">
    <properties>
-    <property name="id_entidades" type="int" value="7"/>
+    <property name="id_entidades" type="int" value="44"/>
    </properties>
   </object>
   <object id="14" template="Entidad_tiled.tx" x="168" y="264">

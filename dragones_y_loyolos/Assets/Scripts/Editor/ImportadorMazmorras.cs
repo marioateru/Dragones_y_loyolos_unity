@@ -68,7 +68,8 @@ public class ImportadorMazmorras : CustomTmxImporter
                         if (propiedadesPuerta.TryGetCustomProperty("destinoY", out CustomProperty pY))
                             if (int.TryParse(pY.m_Value, out int val)) puertaScript.destinoY = val;
                             
-                        puertaInstanciada.name = $"Puerta_A_Sala_{puertaScript.idSalaDestino}";
+                        // FIX: Add obj.m_Id to make name 100% unique in prefab
+                        puertaInstanciada.name = $"Puerta_A_Sala_{puertaScript.idSalaDestino}_ID_{obj.m_Id}";
                     }
                     GameObject.DestroyImmediate(obj.gameObject);
                 }
