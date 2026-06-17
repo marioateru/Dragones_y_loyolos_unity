@@ -97,7 +97,13 @@ public class SQLManager : MonoBehaviour
         int posX = posBD != null ? posBD.Xpos : 0;
         int posY = posBD != null ? posBD.Ypos : 0;
 
-        entidad.InicializarDatosSQL(id_entidad, estadoStats.id_stats_base, estadoStats, posX, posY);
+        // Leer HP real de T=0 para pasarlo a C#
+        var statsT0 = connection.Query<StatsBaseEntidadesSQL>(
+            "SELECT hp FROM Stats_base_entidades WHERE id_entidades = ? AND timestep = 0 LIMIT 1", id_entidad).FirstOrDefault();
+        
+        int maxHpLeido = statsT0 != null ? statsT0.hp : estadoStats.hp;
+
+        entidad.InicializarDatosSQL(id_entidad, estadoStats.id_stats_base, estadoStats, posX, posY, maxHpLeido);
     }
 
     public int ObtenerArquetipoDeEntidad(int id_entidad, int timestep)

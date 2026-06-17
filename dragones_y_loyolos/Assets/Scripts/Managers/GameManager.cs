@@ -259,7 +259,7 @@ public class GameManager : MonoBehaviour
         {
             Entidad actorTurno = entityQueue[indiceEntidadPensando];
             
-            actorTurno.estaDefendido = false; 
+            actorTurno.SetEstaDefendido(false);
             
             estadoActual = GameState.EsperandoEleccion;
             actorTurno.ChooseAction();
