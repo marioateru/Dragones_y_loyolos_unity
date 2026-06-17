@@ -72,18 +72,26 @@ public class ImportadorMazmorras : CustomTmxImporter
                     }
                     GameObject.DestroyImmediate(obj.gameObject);
                 }
-                continue; // Pasamos al siguiente objeto
+                continue; 
             }
             
             // 2. ENTIDADES
             int idEntidad = -1;
+            string propValue = "";
             SuperCustomProperties propiedadesObj = obj.GetComponent<SuperCustomProperties>();
             if (propiedadesObj != null)
             {
-                // Aceptamos varios nombres comunes por si hay errores tipográficos en Tiled
-                if (propiedadesObj.TryGetCustomProperty("id_entidades", out CustomProperty p1)) int.TryParse(p1.m_Value, out idEntidad);
-                else if (propiedadesObj.TryGetCustomProperty("id_entidad", out CustomProperty p2)) int.TryParse(p2.m_Value, out idEntidad);
-                else if (propiedadesObj.TryGetCustomProperty("idEntidad", out CustomProperty p3)) int.TryParse(p3.m_Value, out idEntidad);
+                if (propiedadesObj.TryGetCustomProperty("id_entidades", out CustomProperty p1)) propValue = p1.m_Value;
+                else if (propiedadesObj.TryGetCustomProperty("id_entidad", out CustomProperty p2)) propValue = p2.m_Value;
+                else if (propiedadesObj.TryGetCustomProperty("idEntidad", out CustomProperty p3)) propValue = p3.m_Value;
+
+                if (!string.IsNullOrEmpty(propValue))
+                {
+                    if (float.TryParse(propValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float fId)) 
+                    {
+                        idEntidad = Mathf.RoundToInt(fId);
+                    }
+                }
             }
 
             if (idEntidad > 0)
@@ -95,9 +103,10 @@ public class ImportadorMazmorras : CustomTmxImporter
                 {
                     try 
                     {
+                        // FIX: Timestep 0 instead of 1
                         int filasActualizadas = connection.Execute(@"UPDATE Entidades_sala_proposito_contenido 
                             SET Xpos = ?, Ypos = ?, id_sala_proposito_contenido = ? 
-                            WHERE id_entidades = ? AND timestep = 1", 
+                            WHERE id_entidades = ? AND timestep = 0", 
                             logicX, logicY, idSalaImportada, idEntidad);
 
                         if (filasActualizadas > 0)
@@ -106,9 +115,10 @@ public class ImportadorMazmorras : CustomTmxImporter
                         }
                         else
                         {
+                            // FIX: Timestep 0 instead of 1
                             connection.Execute(@"INSERT INTO Entidades_sala_proposito_contenido 
                                 (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) 
-                                VALUES (1, 0, ?, ?, ?, ?)", 
+                                VALUES (0, 0, ?, ?, ?, ?)", 
                                 idEntidad, idSalaImportada, logicX, logicY);
                                 
                             Debug.Log($"<color=cyan>[SQL-Tiled]</color> Entidad {idEntidad} insertada por primera vez en ({logicX}, {logicY}) - Sala {idSalaImportada}.");
@@ -117,7 +127,8 @@ public class ImportadorMazmorras : CustomTmxImporter
                     catch (System.Exception e) { Debug.LogError($"Error SQL en entidad {idEntidad}: {e.Message}"); }
                 }
 
-                GameObject.DestroyImmediate(obj.gameObject);
+                // FIX: NO DESTROY HERE! Leave object so ModRebuilder can find it later.
+                // GameObject.DestroyImmediate(obj.gameObject); 
             }
         }
 

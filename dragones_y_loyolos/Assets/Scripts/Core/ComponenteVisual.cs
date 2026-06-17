@@ -14,22 +14,27 @@ public class ComponenteVisual : MonoBehaviour
     {
         if (animator == null) return;
 
-        RuntimeAnimatorController overrideController = Resources.Load<RuntimeAnimatorController>($"Animaciones/{nombreVisual}");
+        // Use AnimatorOverrideController. RuntimeAnimatorController no work for overrides well.
+        AnimatorOverrideController overrideController = Resources.Load<AnimatorOverrideController>($"Animaciones/{nombreVisual}");
         
         if (overrideController != null)
         {
             animator.runtimeAnimatorController = overrideController;
+            animator.Rebind();
+            animator.Update(0f);
             Debug.Log($"[Visuales] Aspecto de '{nombreVisual}' cargadas con éxito en {gameObject.name}.");
         }
         else
         {
             Debug.LogWarning($"[Visuales] No se encontró 'Animaciones/{nombreVisual}'. Aspecto de seguridad (Error_Override).");
             
-            RuntimeAnimatorController errorController = Resources.Load<RuntimeAnimatorController>("Animaciones/Error_Override");
+            AnimatorOverrideController errorController = Resources.Load<AnimatorOverrideController>("Animaciones/Error_Override");
             
             if (errorController != null)
             {
                 animator.runtimeAnimatorController = errorController;
+                animator.Rebind();
+                animator.Update(0f);
             }
             else
             {

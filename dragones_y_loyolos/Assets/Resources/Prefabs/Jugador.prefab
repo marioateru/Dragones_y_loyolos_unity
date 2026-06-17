@@ -60,9 +60,10 @@ MonoBehaviour:
   <xPos>k__BackingField: 0
   <yPos>k__BackingField: 0
   accionesPermitidas: 
-  <id_jugadores>k__BackingField: 
-  <clase>k__BackingField: 0
-  <nivel>k__BackingField: 0
+  collisionChecker: {fileID: 0}
+  sqlManager: {fileID: 0}
+  pasosSinEnemigo: 0
+  porcentajeVidaBaja: 0.4
 --- !u!114 &6374172565021501632
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -178,7 +179,7 @@ Animator:
   m_GameObject: {fileID: 6988287864946087104}
   m_Enabled: 1
   m_Avatar: {fileID: 0}
-  m_Controller: {fileID: 9100000, guid: 5e7b3e4a9391d402488ca2ed4503ca71, type: 2}
+  m_Controller: {fileID: 22100000, guid: 87f936e12a4ef4c6e8c3a9a8c1cdd978, type: 2}
   m_CullingMode: 0
   m_UpdateMode: 0
   m_ApplyRootMotion: 0

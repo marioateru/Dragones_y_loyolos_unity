@@ -356,15 +356,17 @@ public class GestorMonstruosDB : EditorWindow
                 int idActual = proximoIdEntidad + i;
                 conn.Execute("INSERT INTO Entidades (id_entidades) VALUES (?)", idActual);
                 conn.Execute("INSERT INTO Monstruos (id_monstruos, id_entidades) VALUES (?, ?)", nombreMonstruo, idActual);
+                // Changed timestep to 0
                 conn.Execute(@"INSERT INTO Stats_base_entidades 
                     (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) 
-                    VALUES (1, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", idActual, proximoIdStats, hp, ac, fue, des, con, intel, sab, car);
+                    VALUES (0, 0, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", idActual, proximoIdStats, hp, ac, fue, des, con, intel, sab, car);
+                // Changed timestep to 0
                 conn.Execute(@"INSERT INTO Entidades_sala_proposito_contenido 
                     (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) 
-                    VALUES (1, 0, ?, ?, 0, 0)", idActual, salaInicial);
+                    VALUES (0, 0, ?, ?, 0, 0)", idActual, salaInicial);
                 try {
-                    conn.Execute("INSERT INTO Acciones_entidades (id_entidades, id_acciones) VALUES (?, 'Moverse')", idActual);
-                    conn.Execute("INSERT INTO Acciones_entidades (id_entidades, id_acciones) VALUES (?, 'Atacar')", idActual);
+                    conn.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, ?, 'Moverse')", idActual);
+                    conn.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, ?, 'Atacar')", idActual);
                 } catch {}
             }
             conn.Commit();
@@ -388,6 +390,15 @@ public class GestorMonstruosDB : EditorWindow
             conn.Execute("DELETE FROM Entidades_sala_proposito_contenido WHERE id_entidades > 1");
             conn.Execute("DELETE FROM Tiempo_acciones_entidades WHERE id_entidades > 1");
             try { conn.Execute("DELETE FROM Acciones_entidades WHERE id_entidades > 1"); } catch {}
+            
+            // Clear sequences. Fix ID 400s bug.
+            try {
+                conn.Execute("DELETE FROM sqlite_sequence WHERE name='Stats_base_entidades'");
+                conn.Execute("DELETE FROM sqlite_sequence WHERE name='Entidades_sala_proposito_contenido'");
+                conn.Execute("DELETE FROM sqlite_sequence WHERE name='Tiempo_acciones_entidades'");
+                conn.Execute("DELETE FROM sqlite_sequence WHERE name='Acciones_entidades'");
+            } catch {}
+
             conn.Commit();
             Debug.Log("<color=cyan>[SQL]</color> Tablas limpiadas con éxito. Solo queda el Jugador.");
         }

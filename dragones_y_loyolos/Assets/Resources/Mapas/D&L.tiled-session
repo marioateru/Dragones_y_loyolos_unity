@@ -1,11 +1,11 @@
 {
-    "activeFile": "mazmorra_1.tmx",
+    "activeFile": "mazmorra_3.tmx",
     "expandedProjectPaths": [
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
         "Dungeon_tileset.tsx": {
-            "scaleInDock": 1.7468,
+            "scaleInDock": 1,
             "scaleInEditor": 1
         },
         "dungeon_0.tmx": {
@@ -53,11 +53,11 @@
                 5,
                 9
             ],
-            "scale": 3.5433,
+            "scale": 1.7633,
             "selectedLayer": 3,
             "viewCenter": {
-                "x": 359.12849603476985,
-                "y": 343.0417971947055
+                "x": 431.2935972324618,
+                "y": 402.3705552089831
             }
         },
         "plantilla.tmx": {
@@ -83,15 +83,16 @@
         "Dungeon_tileset.tsx",
         "mazmorra_1.tmx",
         "mazmorra_2.tmx",
-        "plantilla.tmx"
+        "mazmorra_3.tmx"
     ],
     "project": "D&L.tiled-project",
     "property.type": "int",
     "recentFiles": [
         "Dungeon_tileset.tsx",
-        "plantilla.tmx",
-        "mazmorra_2.tmx",
         "mazmorra_1.tmx",
+        "mazmorra_2.tmx",
+        "mazmorra_3.tmx",
+        "plantilla.tmx",
         "dungeon_2.tmx",
         "dungeon_0.tmx"
     ],

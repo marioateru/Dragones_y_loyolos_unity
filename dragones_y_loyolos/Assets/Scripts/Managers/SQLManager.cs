@@ -203,7 +203,6 @@ public class SQLManager : MonoBehaviour
     public List<Acciones> ObtenerAccionesPermitidas(int idEntidad)
     {
         List<Acciones> acciones = new List<Acciones>();
-        
         string query = "SELECT id_acciones FROM Acciones_entidades WHERE id_entidades = ?";
         
         try
@@ -228,12 +227,26 @@ public class SQLManager : MonoBehaviour
             Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {e.Message}");
         }
 
-        // Si la tabla intermedia de acciones está vacía, le damos a la entidad las básicas.
+        // Fix missing player actions at DB start
         if (acciones.Count == 0)
         {
             acciones.Add(Acciones.Moverse);
             acciones.Add(Acciones.Atacar);
             acciones.Add(Acciones.Defender);
+            
+            if (idEntidad == 1) 
+            {
+                try 
+                {
+                    connection.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, 'Moverse')");
+                    connection.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, 'Atacar')");
+                    connection.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, 'Defender')");
+                } 
+                catch (System.Exception exception)
+                {
+                    Debug.Log(exception);
+                }
+            }
         }
 
         return acciones;

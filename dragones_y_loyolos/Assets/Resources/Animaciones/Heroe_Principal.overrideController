@@ -6,8 +6,8 @@ AnimatorOverrideController:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Skeleton_Override
+  m_Name: Heroe_Principal
   m_Controller: {fileID: 9100000, guid: 5e7b3e4a9391d402488ca2ed4503ca71, type: 2}
   m_Clips:
   - m_OriginalClip: {fileID: 7400000, guid: 2b549591402d24676b385ba72864b91b, type: 2}
-    m_OverrideClip: {fileID: 7400000, guid: e5f4d33573a384be2a4441ab3f5604c1, type: 2}
+    m_OverrideClip: {fileID: 7400000, guid: 2b549591402d24676b385ba72864b91b, type: 2}

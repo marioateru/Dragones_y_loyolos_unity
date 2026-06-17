@@ -88,11 +88,19 @@ public abstract class Entidad : MonoBehaviour
                     int d20 = DnD_Rules.LanzarD20(ventaja: false, desventaja: desventaja);
                     int tiradaAtaque = d20 + fuerza;
 
-                    if (tiradaAtaque >= objetivoAtaque.ac)
+                    bool hit = (d20 == 20) || (tiradaAtaque >= objetivoAtaque.ac);
+                    
+                    Debug.Log($"<color=orange>[Combate]</color> {gameObject.name} ataca a {objetivoAtaque.gameObject.name}. Tirada: {d20} + {fuerza} = {tiradaAtaque} vs AC {objetivoAtaque.ac}. ¿Impacta?: {hit}");
+
+                    if (hit)
                     {
-                        int dannoTotal = DnD_Rules.LanzarDados(1, 4) + fuerza;
+                        int dannoTotal = Mathf.Max(1, DnD_Rules.LanzarDados(1, 4) + fuerza);
                         objetivoAtaque.RecibirInteraccion(this, Acciones.Atacar, dannoTotal);
                     }
+                }
+                else 
+                {
+                    Debug.Log($"<color=grey>[Combate]</color> {gameObject.name} ataca al aire en ({targetX}, {targetY}). El objetivo se movió.");
                 }
                 break;
 
@@ -114,14 +122,23 @@ public abstract class Entidad : MonoBehaviour
 
     public virtual void RecibirInteraccion(Entidad origen, Acciones tipoInteraccion, int valorData = 0)
     {
-        if (tipoInteraccion == Acciones.Atacar)
+        switch (tipoInteraccion)
         {
-            this.hp -= valorData;
-            if (IsDead()) gameObject.SetActive(false);
-        }
-        else if (tipoInteraccion == Acciones.Consumir)
-        {
-            this.hp += valorData;
+            case Acciones.Atacar:
+                this.hp -= valorData;
+                Debug.Log($"<color=red>[Daño]</color> {gameObject.name} recibe {valorData} de daño. HP restante: {this.hp}");
+
+                if (IsDead()) 
+                {
+                    Debug.Log($"<color=red>[Muerte]</color> {gameObject.name} ha muerto.");
+                    gameObject.SetActive(false);
+                }
+                break;
+
+            case Acciones.Consumir:
+                // ValorData es lo que nos curamos
+                this.hp += valorData;
+                break;
         }
     }
 

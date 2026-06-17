@@ -196,11 +196,15 @@ public class GameManager : MonoBehaviour
             sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
             nuevoObj.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
 
-            ComponenteVisual visuales = nuevoObj.GetComponent<ComponenteVisual>();
+            ComponenteVisual visuales = nuevoObj.GetComponentInChildren<ComponenteVisual>();
             if (visuales != null)
             {
                 string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
                 visuales.InicializarVisuales(nombreVisual);
+            }
+            else
+            {
+                Debug.Log($"[GameManager] No se han encontrado visuales para {entidadSQL.id_entidades}");
             }
             
             entidadesEnMapa.Add(nuevoObj);

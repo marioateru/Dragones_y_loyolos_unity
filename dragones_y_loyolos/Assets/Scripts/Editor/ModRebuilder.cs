@@ -43,10 +43,19 @@ public class ModRebuilder : EditorWindow
                 if (propiedadesObjeto != null)
                 {
                     int idEntidad = -1;
+                    string propValue = "";
                     
-                    if (propiedadesObjeto.TryGetCustomProperty("id_entidades", out CustomProperty p1)) int.TryParse(p1.m_Value, out idEntidad);
-                    else if (propiedadesObjeto.TryGetCustomProperty("id_entidad", out CustomProperty p2)) int.TryParse(p2.m_Value, out idEntidad);
-                    else if (propiedadesObjeto.TryGetCustomProperty("idEntidad", out CustomProperty p3)) int.TryParse(p3.m_Value, out idEntidad);
+                    if (propiedadesObjeto.TryGetCustomProperty("id_entidades", out CustomProperty p1)) propValue = p1.m_Value;
+                    else if (propiedadesObjeto.TryGetCustomProperty("id_entidad", out CustomProperty p2)) propValue = p2.m_Value;
+                    else if (propiedadesObjeto.TryGetCustomProperty("idEntidad", out CustomProperty p3)) propValue = p3.m_Value;
+
+                    if (!string.IsNullOrEmpty(propValue))
+                    {
+                        if (float.TryParse(propValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float fId)) 
+                        {
+                            idEntidad = Mathf.RoundToInt(fId);
+                        }
+                    }
 
                     if (idEntidad > 0)
                     {
@@ -85,7 +94,7 @@ public class ModRebuilder : EditorWindow
         }
         else
         {
-            Debug.Log($"<color=green><b>[Rebuilder ÉXITO] Base de datos reconstruida. Se crearon {salasRegistradas} salas y se colocaron {entidadesColocadas} entidades.</b></color>");
+            Debug.Log($"<color=green><b>[Rebuilder ÉXITO] Jugador Encontrado. Base de datos reconstruida. Se crearon {salasRegistradas} salas y se colocaron {entidadesColocadas} entidades.</b></color>");
         }
     }
 }
