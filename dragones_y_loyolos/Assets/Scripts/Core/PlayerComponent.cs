@@ -9,15 +9,20 @@ public class PlayerComponent : Entidad
     [Header("Parámetros modo ML, no tocar.")]
     [SerializeField] private TileCollisionChecker collisionChecker;
     [SerializeField] private SQLManager sqlManager;
+    [SerializeField] private int pasosSinEnemigo = 0;
     [SerializeField] private float porcentajeVidaBaja = 0.4f;
-    [SerializeField] private float probContraataqueML = 0.15f;
 
-    // MEMORIA SIMPLE: Rastro de olor
-    private List<Vector2Int> historialPosiciones = new List<Vector2Int>();
-    private HashSet<Entidad> objetivosInalcanzables = new HashSet<Entidad>();
-    private PuertaMazmorra puertaObjetivoActual = null; 
-    private int lastEnemigosVivos = -1; 
-    
+    // TARGET LOCKS: Evitan que el bot baile entre dos opciones con distancias similares
+    private PuertaMazmorra puertaObjetivo = null;
+    private Entidad enemigoObjetivo = null;
+
+    // A* RAM (Reutilizada para que el Garbage Collector no sature la simulación)
+    private List<Vector2Int> openList = new List<Vector2Int>(5000);
+    private HashSet<Vector2Int> closedList = new HashSet<Vector2Int>(5000);
+    private Dictionary<Vector2Int, Vector2Int> cameFrom = new Dictionary<Vector2Int, Vector2Int>(5000);
+    private Dictionary<Vector2Int, int> gScore = new Dictionary<Vector2Int, int>(5000);
+    private Dictionary<Vector2Int, int> fScore = new Dictionary<Vector2Int, int>(5000);
+
     public override void Awake()
     {
         base.Awake();
@@ -29,12 +34,6 @@ public class PlayerComponent : Entidad
     {
         if (IsDead()) 
         {
-            if (ML_Core.IsMLMode && ML_Core.Instancia != null) 
-            {
-                gameManager.enabled = false;
-                ML_Core.Instancia.GestionarMuerteBot();
-                return;
-            }
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
@@ -72,6 +71,7 @@ public class PlayerComponent : Entidad
         else if (puerta != null)
         {
             if (accionesPermitidas.Contains(Acciones.Moverse)) opciones.Add(Acciones.Moverse);
+            if (accionesPermitidas.Contains(Acciones.Interactuar)) opciones.Add(Acciones.Interactuar);
         }
         else
         {
@@ -90,7 +90,10 @@ public class PlayerComponent : Entidad
 
         int dist = Mathf.Max(Mathf.Abs(origenX - targetX), Mathf.Abs(origenY - targetY));
 
-        if (accion == Acciones.Consumir || accion == Acciones.Defender) return dist == 0; 
+        if (accion == Acciones.Consumir || accion == Acciones.Defender)
+        {
+            return dist == 0; 
+        }
 
         int rangoPermitido = 1;
         if (accion == Acciones.Moverse) rangoPermitido = Mathf.Max(1, velocidad);
@@ -117,113 +120,77 @@ public class PlayerComponent : Entidad
         int miX = Mathf.RoundToInt(xPos);
         int miY = Mathf.RoundToInt(yPos);
         
-        // Rastro de olor: Guardamos hasta 15 pasos.
-        historialPosiciones.Add(new Vector2Int(miX, miY));
-        if (historialPosiciones.Count > 15) historialPosiciones.RemoveAt(0);
-        
         if (gameManager.salaActual != null)
         {
             ML_Core.Instancia.salasVisitadas.Add(gameManager.salaActual.idSalaActual);
         }
 
-        int enemigosVivosActuales = 0;
-        foreach(var e in gameManager.ObtenerTodasLasEntidades()) if (e is EnemyComponent && !e.IsDead()) enemigosVivosActuales++;
-        
-        if (lastEnemigosVivos != -1 && enemigosVivosActuales < lastEnemigosVivos) 
-        {
-            ML_Core.Instancia?.RegistrarMuerteEnemigo();
-            objetivosInalcanzables.Clear(); 
-        }
-        lastEnemigosVivos = enemigosVivosActuales;
-
+        // 1. OMNISCIENCIA: Escanea la sala entera al instante
         int enemigosCercanos;
         Entidad enemigoPelear = EscanearMejorEnemigoGlobal(miX, miY, out enemigosCercanos); 
 
-        // NO HAY ENEMIGOS: BUSCAR PUERTA
+        // Si NO hay enemigos en toda la sala...
         if (enemigoPelear == null)
         {
-            if (puertaObjetivoActual == null || gameManager.salaActual == null || !gameManager.salaActual.ObtenerTodasLasPuertas().Contains(puertaObjetivoActual))
-            {
-                puertaObjetivoActual = SeleccionarPuertaAleatoria();
-            }
+            enemigoObjetivo = null; // Soltamos lock de enemigo
 
-            if (puertaObjetivoActual != null)
+            PuertaMazmorra puertaDestino = SeleccionarMejorPuerta(miX, miY);
+            if (puertaDestino != null)
             {
-                int pX = puertaObjetivoActual.logicX;
-                int pY = puertaObjetivoActual.logicY;
+                // Todavía quedan salas por limpiar, vamos a la puerta
+                int pX = puertaDestino.logicX;
+                int pY = puertaDestino.logicY;
                 
                 if (Mathf.Max(Mathf.Abs(miX - pX), Mathf.Abs(miY - pY)) <= 1)
                 {
                     ML_Core.Instancia?.RegistrarOperacionIA();
                     SubmitAction(Acciones.Moverse, pX, pY);
-                    
-                    objetivosInalcanzables.Clear();
-                    puertaObjetivoActual = null; 
+                    puertaObjetivo = null; // Reseteamos al cruzar
                     return;
                 }
                 
-                Vector2Int avance = CalcularPasoGreedy(miX, miY, pX, pY);
-
-                if (avance.x == miX && avance.y == miY) 
-                {
-                    puertaObjetivoActual = null;
-                    SubmitAction(Acciones.Moverse, miX, miY);
-                    return;
-                }
-
+                Vector2Int avance = CalcularSiguientePasoAStar(miX, miY, pX, pY);
+                if (avance.x == -9999) avance = CalcularCasillaAleatoria(miX, miY);
+                
                 ML_Core.Instancia?.RegistrarOperacionIA();
-                SubmitAction(Acciones.Moverse, avance.x, avance.y);
+                EjecutarPaso(avance.x, avance.y);
                 return;
             }
             else
             {
-                if (objetivosInalcanzables.Count > 0)
-                {
-                    SubmitAction(Acciones.Moverse, miX, miY); 
-                    return;
-                }
-
-                Debug.Log("<color=green><b>[ML-BOT] ¡SALA AISLADA / COMPLETA!</b> Reiniciando simulación.</color>");
-                if (ML_Core.Instancia != null) 
-                {
-                    gameManager.enabled = false;
-                    ML_Core.Instancia.GestionarMuerteBot(); 
-                    return;
-                }
-                SubmitAction(Acciones.Moverse, miX, miY); 
+                // ¡CONDICIÓN DE ÉXITO ABSOLUTO O CALLEJÓN SIN SALIDA! 
+                // Sin enemigos y sin puertas nuevas -> La simulación debe terminar este episodio.
+                Debug.Log("<color=green><b>[ML-BOT] ¡MAZMORRA LIMPIADA / CALLEJON!</b> Reiniciando simulación.</color>");
+                if (ML_Core.Instancia != null) ML_Core.Instancia.GestionarMuerteBot(); 
+                else SubmitAction(Acciones.Moverse, miX, miY); 
                 return;
             }
         }
 
+        // 2. A PARTIR DE AQUÍ: HAY ENEMIGOS EN LA SALA
+        pasosSinEnemigo = 0; 
+        puertaObjetivo = null; // Si hay combate, nos olvidamos de la puerta temporalmente
         ML_Core.Instancia?.RegistrarContactoEnemigo();
-        puertaObjetivoActual = null; 
+
+        int vidaMax = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades); 
         
-        int vidaMax = this.MaxHpT0; 
-        
+        // MODO SUPERVIVENCIA
         if (hp <= vidaMax * porcentajeVidaBaja)
         {
-            bool valiente = UnityEngine.Random.value <= probContraataqueML;
-
-            if (!valiente)
+            if (enemigosCercanos == 0 && hp < vidaMax)
             {
-                if (enemigosCercanos == 0 && hp < vidaMax)
-                {
-                    ML_Core.Instancia?.RegistrarOperacionIA();
-                    SubmitAction(Acciones.Consumir, miX, miY);
-                    return;
-                }
-
-                Vector2Int escape = CalcularCasillaHuida(miX, miY, enemigoPelear); 
                 ML_Core.Instancia?.RegistrarOperacionIA();
-                SubmitAction(Acciones.Moverse, escape.x, escape.y);
+                SubmitAction(Acciones.Consumir, miX, miY);
                 return;
             }
-            else
-            {
-                Debug.Log("<color=orange>[ML-BOT]</color> Herido, pero decide contraatacar a la desesperada.");
-            }
+
+            Vector2Int escape = CalcularCasillaHuida(miX, miY, enemigoPelear); 
+            ML_Core.Instancia?.RegistrarOperacionIA();
+            SubmitAction(Acciones.Moverse, escape.x, escape.y);
+            return;
         }
 
+        // 3. COMBATE TÁCTICO
         int enX = Mathf.RoundToInt(enemigoPelear.xPos);
         int enY = Mathf.RoundToInt(enemigoPelear.yPos);
         int distancia = Mathf.Max(Mathf.Abs(miX - enX), Mathf.Abs(miY - enY));
@@ -237,24 +204,25 @@ public class PlayerComponent : Entidad
         {
             Vector2Int flanqueo = CalcularCasillaFlanqueo(miX, miY, enX, enY);
             ML_Core.Instancia?.RegistrarOperacionIA();
-            SubmitAction(Acciones.Moverse, flanqueo.x, flanqueo.y);
+            EjecutarPaso(flanqueo.x, flanqueo.y);
         }
         else
         {
-            // GREEDY STEP: Va directo. Si choca, penaliza la casilla en memoria y rodea.
-            Vector2Int avance = CalcularPasoGreedy(miX, miY, enX, enY);
-
-            if (avance.x == miX && avance.y == miY)
-            {
-                Debug.Log($"<color=yellow>[ML-BOT]</color> Enemigo {enemigoPelear.name} inalcanzable. Lista negra.");
-                objetivosInalcanzables.Add(enemigoPelear);
-                SubmitAction(Acciones.Moverse, miX, miY); 
-                return;
-            }
-
+            Vector2Int avance = CalcularSiguientePasoAStar(miX, miY, enX, enY);
+            if (avance.x == -9999) avance = CalcularCasillaAleatoria(miX, miY);
+            
             ML_Core.Instancia?.RegistrarOperacionIA();
-            SubmitAction(Acciones.Moverse, avance.x, avance.y);
+            EjecutarPaso(avance.x, avance.y);
         }
+    }
+
+    private void EjecutarPaso(int x, int y)
+    {
+        Entidad obstaculo = gameManager.ObtenerEntidadEnCasilla(x, y);
+        if (obstaculo != null && obstaculo != this)
+            SubmitAction(Acciones.Atacar, x, y);
+        else
+            SubmitAction(Acciones.Moverse, x, y);
     }
 
     private Entidad EscanearMejorEnemigoGlobal(int origenX, int origenY, out int enemigosCercanos)
@@ -267,8 +235,6 @@ public class PlayerComponent : Entidad
         {
             if (entidad is EnemyComponent && !entidad.IsDead())
             {
-                if (objetivosInalcanzables.Contains(entidad)) continue;
-
                 int ex = Mathf.RoundToInt(entidad.xPos);
                 int ey = Mathf.RoundToInt(entidad.yPos);
                 int dist = Mathf.Max(Mathf.Abs(origenX - ex), Mathf.Abs(origenY - ey));
@@ -276,9 +242,7 @@ public class PlayerComponent : Entidad
                 if (dist <= 3) enemigosCercanos++; 
 
                 int score = (dist * 10) + entidad.hp; 
-                
-                // Ligera penalización si hay un muro, para que prefiera los de su habitación
-                if (collisionChecker.HayMuroEnRuta(origenX, origenY, ex, ey)) score += 500;
+                if (collisionChecker.HayMuroEnRuta(origenX, origenY, ex, ey)) score += 100;
 
                 if (score < mejorPrioridad)
                 {
@@ -287,74 +251,49 @@ public class PlayerComponent : Entidad
                 }
             }
         }
+
+        // TARGET LOCK: Mantenemos el mismo objetivo a menos que muera
+        if (enemigoObjetivo != null && !enemigoObjetivo.IsDead() && gameManager.ObtenerTodasLasEntidades().Contains(enemigoObjetivo))
+        {
+            return enemigoObjetivo;
+        }
+
+        enemigoObjetivo = mejorObjetivo;
         return mejorObjetivo;
     }
 
-    private PuertaMazmorra SeleccionarPuertaAleatoria()
+    private PuertaMazmorra SeleccionarMejorPuerta(int miX, int miY)
     {
-        if (gameManager.salaActual == null) return null;
+        // TARGET LOCK: Si ya apuntamos a una puerta y es válida (no visitada), seguimos yendo allí sin cambiar de opinión
+        if (puertaObjetivo != null && gameManager.salaActual.ObtenerTodasLasPuertas().Contains(puertaObjetivo))
+        {
+            if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(puertaObjetivo.idSalaDestino))
+            {
+                return puertaObjetivo;
+            }
+        }
 
         List<PuertaMazmorra> todas = gameManager.salaActual.ObtenerTodasLasPuertas();
         if (todas.Count == 0) return null;
 
-        List<PuertaMazmorra> inexploradas = new List<PuertaMazmorra>();
-        List<PuertaMazmorra> exploradas = new List<PuertaMazmorra>();
+        PuertaMazmorra puertaInexplorada = null;
+        float mejorDist = float.MaxValue;
 
         foreach (var p in todas)
         {
             if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(p.idSalaDestino))
-                inexploradas.Add(p);
-            else 
-                exploradas.Add(p);
-        }
-        
-        if (inexploradas.Count > 0) return inexploradas[UnityEngine.Random.Range(0, inexploradas.Count)];
-        if (exploradas.Count > 0) return exploradas[UnityEngine.Random.Range(0, exploradas.Count)];
-        
-        return null; 
-    }
-
-    // ALGORITMO GREEDY + PENALIZACION DE HISTORIAL
-    // Se mueve directo al enemigo. Si se atasca, las casillas que pisa "huelen mal"
-    // y empieza a rodear los muros naturalmente sin necesidad de A-Star.
-    private Vector2Int CalcularPasoGreedy(int origenX, int origenY, int targetX, int targetY)
-    {
-        List<Vector2Int> validas = ObtenerCasillasValidasAlrededor(origenX, origenY, 1);
-        
-        if (validas.Count == 0) return new Vector2Int(origenX, origenY);
-
-        Vector2Int mejorCasilla = validas[0];
-        float mejorPuntuacion = float.MaxValue;
-
-        // Desordenar para evitar decisiones deterministas en empates
-        for (int i = 0; i < validas.Count; i++) {
-            Vector2Int temp = validas[i];
-            int randomIndex = UnityEngine.Random.Range(i, validas.Count);
-            validas[i] = validas[randomIndex];
-            validas[randomIndex] = temp;
-        }
-
-        foreach (var cas in validas)
-        {
-            // Puntuacion base: Distancia directa (ir hacia el objetivo)
-            float puntuacion = Mathf.Max(Mathf.Abs(cas.x - targetX), Mathf.Abs(cas.y - targetY));
-
-            // Penalización: Rastro de olor. Si ya pisaste aquí, es mala idea.
-            int indexEnHistorial = historialPosiciones.LastIndexOf(cas);
-            if (indexEnHistorial != -1)
             {
-                int pasosAtras = historialPosiciones.Count - indexEnHistorial;
-                puntuacion += (15.0f / pasosAtras); // Añade mucho peso a pasos recientes
-            }
-
-            if (puntuacion < mejorPuntuacion)
-            {
-                mejorPuntuacion = puntuacion;
-                mejorCasilla = cas;
+                float dist = Mathf.Max(Mathf.Abs(miX - p.logicX), Mathf.Abs(miY - p.logicY));
+                if (dist < mejorDist)
+                {
+                    mejorDist = dist;
+                    puertaInexplorada = p;
+                }
             }
         }
 
-        return mejorCasilla;
+        puertaObjetivo = puertaInexplorada;
+        return puertaInexplorada; 
     }
 
     private Vector2Int CalcularCasillaFlanqueo(int origenX, int origenY, int objetivoX, int objetivoY)
@@ -386,6 +325,101 @@ public class PlayerComponent : Entidad
             }
         }
         return mejor;
+    }
+
+    // REEMPLAZO DEL BFS POR A* (Más robusto para esquinas, no se queda atascado)
+    private Vector2Int CalcularSiguientePasoAStar(int startX, int startY, int targetX, int targetY)
+    {
+        Vector2Int start = new Vector2Int(startX, startY);
+        Vector2Int target = new Vector2Int(targetX, targetY);
+
+        if (start == target) return start;
+
+        openList.Clear();
+        closedList.Clear();
+        cameFrom.Clear();
+        gScore.Clear();
+        fScore.Clear();
+
+        openList.Add(start);
+        gScore[start] = 0;
+        fScore[start] = Mathf.Max(Mathf.Abs(start.x - target.x), Mathf.Abs(start.y - target.y));
+
+        int loops = 0;
+        while (openList.Count > 0 && loops < 5000)
+        {
+            loops++;
+            Vector2Int current = openList[0];
+            int lowestScore = fScore.GetValueOrDefault(current, int.MaxValue);
+            for (int i = 1; i < openList.Count; i++)
+            {
+                int score = fScore.GetValueOrDefault(openList[i], int.MaxValue);
+                if (score < lowestScore)
+                {
+                    lowestScore = score;
+                    current = openList[i];
+                }
+            }
+
+            if (current == target)
+            {
+                Vector2Int curr = target;
+                while (cameFrom.ContainsKey(curr))
+                {
+                    Vector2Int prev = cameFrom[curr];
+                    if (prev == start) return curr;
+                    curr = prev;
+                }
+                return start;
+            }
+
+            openList.Remove(current);
+            closedList.Add(current);
+
+            for (int x = -1; x <= 1; x++)
+            {
+                for (int y = -1; y <= 1; y++)
+                {
+                    if (x == 0 && y == 0) continue;
+
+                    Vector2Int neighbor = new Vector2Int(current.x + x, current.y + y);
+                    if (closedList.Contains(neighbor)) continue;
+
+                    // CHEQUEO DE ESQUINAS: Evita que intente caminar a través de bordes sólidos en diagonal
+                    if (Mathf.Abs(x) == 1 && Mathf.Abs(y) == 1)
+                    {
+                        if (collisionChecker.HayMuroEnRuta(current.x, current.y, current.x + x, current.y) || 
+                            collisionChecker.HayMuroEnRuta(current.x, current.y, current.x, current.y + y)) 
+                            continue;
+                    }
+
+                    // CHEQUEO DE MUROS
+                    bool isWall = collisionChecker.HayMuroEnRuta(current.x, current.y, neighbor.x, neighbor.y);
+                    bool isDoor = gameManager.salaActual != null && gameManager.salaActual.ObtenerPuerta(neighbor.x, neighbor.y) != null;
+                    if (isWall && !isDoor) continue;
+
+                    int moveCost = 10;
+                    
+                    // Si hay un enemigo bloqueando, suma costo pero permite que el pathfinding cruce por ahí 
+                    // (lo atacará al intentar pisar gracias a EjecutarPaso)
+                    if (gameManager.ObtenerEntidadEnCasilla(neighbor.x, neighbor.y) != null && neighbor != target)
+                    {
+                        moveCost += 100; 
+                    }
+
+                    int tentativeG = gScore[current] + moveCost;
+
+                    if (!openList.Contains(neighbor)) openList.Add(neighbor);
+                    else if (tentativeG >= gScore.GetValueOrDefault(neighbor, int.MaxValue)) continue;
+
+                    cameFrom[neighbor] = current;
+                    gScore[neighbor] = tentativeG;
+                    fScore[neighbor] = tentativeG + Mathf.Max(Mathf.Abs(neighbor.x - target.x), Mathf.Abs(neighbor.y - target.y));
+                }
+            }
+        }
+        
+        return new Vector2Int(-9999, -9999); 
     }
 
     private Vector2Int CalcularCasillaHuida(int origenX, int origenY, Entidad enemigoMasCercano)
@@ -428,32 +462,10 @@ public class PlayerComponent : Entidad
             for (int y = -rango; y <= rango; y++)
             {
                 if (x == 0 && y == 0) continue;
-                
-                if (Mathf.Abs(x) == 1 && Mathf.Abs(y) == 1)
-                {
-                    if (collisionChecker.HayMuroEnRuta(origenX, origenY, origenX + x, origenY) || 
-                        collisionChecker.HayMuroEnRuta(origenX, origenY, origenX, origenY + y)) 
-                    {
-                        continue;
-                    }
-                }
-
                 int cx = origenX + x;
                 int cy = origenY + y;
-
-                bool isDoorCurrent = false;
-                bool isDoorNeighbor = false;
                 
-                if (gameManager.salaActual != null)
-                {
-                    isDoorCurrent = gameManager.salaActual.ObtenerPuerta(origenX, origenY) != null;
-                    isDoorNeighbor = gameManager.salaActual.ObtenerPuerta(cx, cy) != null;
-                }
-
-                // Las puertas ignoran a los muros
-                if (!isDoorCurrent && !isDoorNeighbor && collisionChecker.HayMuroEnRuta(origenX, origenY, cx, cy)) continue;
-                
-                if (gameManager.ObtenerEntidadEnCasilla(cx, cy) == null)
+                if (!collisionChecker.HayMuroEnRuta(origenX, origenY, cx, cy) && gameManager.ObtenerEntidadEnCasilla(cx, cy) == null)
                 {
                     lista.Add(new Vector2Int(cx, cy));
                 }

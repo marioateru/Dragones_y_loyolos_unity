@@ -1,5 +1,5 @@
 {
-    "activeFile": "mazmorra_6.tmx",
+    "activeFile": "mazmorra_5.tmx",
     "expandedProjectPaths": [
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
@@ -77,11 +77,11 @@
                 5,
                 9
             ],
-            "scale": 0.75,
+            "scale": 2.4046,
             "selectedLayer": 2,
             "viewCenter": {
-                "x": 867.3333333333334,
-                "y": -467.33333333333326
+                "x": 16.426848540297755,
+                "y": -332.4877318472927
             }
         },
         "mazmorra_6.tmx": {
@@ -132,8 +132,8 @@
         "mazmorra_2.tmx",
         "mazmorra_3.tmx",
         "mazmorra_4.tmx",
-        "mazmorra_5.tmx",
         "mazmorra_6.tmx",
+        "mazmorra_5.tmx",
         "plantilla.tmx",
         "dungeon_2.tmx",
         "dungeon_0.tmx"

@@ -61,7 +61,7 @@ MonoBehaviour:
   <yPos>k__BackingField: 0
   accionesPermitidas: 
   rangoVision: 8
-  umbralHuida: 0.24
+  umbralHuida: 0.2
   probContraataque: 0.35
 --- !u!114 &1212691631311904118
 MonoBehaviour:
