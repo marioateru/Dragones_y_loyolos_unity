@@ -14,7 +14,6 @@ public class ComponenteVisual : MonoBehaviour
     {
         if (animator == null) return;
 
-        // Use AnimatorOverrideController. RuntimeAnimatorController no work for overrides well.
         AnimatorOverrideController overrideController = Resources.Load<AnimatorOverrideController>($"Animaciones/{nombreVisual}");
         
         if (overrideController != null)
