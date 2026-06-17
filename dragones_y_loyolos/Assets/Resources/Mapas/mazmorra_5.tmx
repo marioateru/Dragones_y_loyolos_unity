@@ -673,17 +673,17 @@
   </object>
   <object id="34" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-120" y="-324">
    <properties>
-    <property name="id_entidades" type="int" value="193"/>
+    <property name="id_entidades" type="int" value="200"/>
    </properties>
   </object>
   <object id="35" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="72" y="-360">
    <properties>
-    <property name="id_entidades" type="int" value="194"/>
+    <property name="id_entidades" type="int" value="201"/>
    </properties>
   </object>
   <object id="36" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="424" y="-148">
    <properties>
-    <property name="id_entidades" type="int" value="195"/>
+    <property name="id_entidades" type="int" value="199"/>
    </properties>
   </object>
   <object id="37" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="424" y="204">

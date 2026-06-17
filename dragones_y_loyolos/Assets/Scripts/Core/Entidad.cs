@@ -24,7 +24,7 @@ public abstract class Entidad : MonoBehaviour
     [field: SerializeField] public float yPos { get; protected set; }
 
     public bool EstaDefendido { get; private set; } = false;
-    public int MaxHpT0 { get; private set; } // Memoria C# (lee de T=0). No SQL.
+    public int MaxHpT0 { get; private set; }
     public List<Acciones> accionesPermitidas = new List<Acciones>();
 
     protected GameManager gameManager;

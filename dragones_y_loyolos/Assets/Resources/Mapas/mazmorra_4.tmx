@@ -458,17 +458,17 @@
     <property name="id_entidades" type="int" value="192"/>
    </properties>
   </object>
-  <object id="41" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-120" y="-264">
+  <object id="41" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-104" y="-216">
    <properties>
     <property name="id_entidades" type="int" value="195"/>
    </properties>
   </object>
-  <object id="42" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-136" y="-248">
+  <object id="42" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-88" y="-236">
    <properties>
     <property name="id_entidades" type="int" value="194"/>
    </properties>
   </object>
-  <object id="43" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-136" y="-232">
+  <object id="43" template="Entidad_tiled.tx" name="Aranna" type="Entidad" x="-56" y="-240">
    <properties>
     <property name="id_entidades" type="int" value="193"/>
    </properties>
@@ -567,7 +567,7 @@
     <property name="idSalaDestino" type="int" value="3"/>
    </properties>
   </object>
-  <object id="10" template="Puerta_tiled.tx" type="Puerta" x="72" y="-164">
+  <object id="10" template="Puerta_tiled.tx" type="Puerta" x="72" y="-168">
    <properties>
     <property name="destinoX" type="int" value="7"/>
     <property name="destinoY" type="int" value="20"/>

@@ -10,27 +10,26 @@ public class ML_Core : MonoBehaviour
     public static bool IsMLMode { get; private set; } = false;
 
     [Header("Forzar ML en Editor")]
-    [Tooltip("Marcar para forzar el modo ML a correr en el editor")]
     public bool forzarModoML_EnEditor = false; 
 
     [Header("Velocidad de Simulación")]
-    [Tooltip("Controla la velocidad de la simulación en operaciones por segundo. -1 = todo lo rápido que dé el procesador.")]
     public float operacionesPorSegundo = -1f;
     [HideInInspector] public float acumuladorOperaciones = 0f;
 
     [Header("Configuración modo ML")]
-    [Tooltip("Límite de veces que el jugador va a morir y continuar la partida")]
     public int limiteEjecuciones = 50;
     public int ejecucionesActuales = 0;
     public int operacionesEnMemoria = 0;
-    [Tooltip("Al alcanzar este umbral, el ML_Core guardará en disco el progreso.")]
     public int limiteOperacionesGuardado = 50000;
     public HashSet<int> salasVisitadas = new HashSet<int>();
-    [Tooltip("Tiempo (en segundos) que el jugador debe estar sin encontrarse a un enemigo para terminar la simulación.")]
+    
+    [Header("Condiciones de Parada")]
     [SerializeField] private float TIMEOUT_SEGUNDOS = 300f;
+    [SerializeField] private float TIMEOUT_MATA_ENEMIGO = 120f; // NUEVO: 2 Minutos
     
     private GameManager gameManager;
     private float tiempoUltimoEnemigo;
+    private float tiempoUltimaMuerteEnemigo; // NUEVO
     private string idInstanciaBase;
 
     void Awake()
@@ -49,10 +48,7 @@ public class ML_Core : MonoBehaviour
 
     private void ComprobarArgumentosConsola()
     {
-        if (Application.isEditor && forzarModoML_EnEditor)
-        {
-            IsMLMode = true;
-        }
+        if (Application.isEditor && forzarModoML_EnEditor) IsMLMode = true;
 
         string[] args = System.Environment.GetCommandLineArgs();
         for (int i = 0; i < args.Length; i++)
@@ -65,9 +61,7 @@ public class ML_Core : MonoBehaviour
         {
             idInstanciaBase = Guid.NewGuid().ToString().Substring(0, 8);
             GameSession.nombrePartidaActiva = "ML_PlayerBot_Simulation";
-            
             AsignarNuevaBD();
-            
             Debug.Log($"<color=magenta>[ML-CORE]</color> Instancia iniciada. Límite: {limiteEjecuciones}");
         }
     }
@@ -95,16 +89,24 @@ public class ML_Core : MonoBehaviour
             if (gameManager == null) return;
         }
 
-        if (Time.realtimeSinceStartup - tiempoUltimoEnemigo > TIMEOUT_SEGUNDOS)
+        float tiempoActual = Time.realtimeSinceStartup;
+
+        // TIMEOUT 1: Sin contacto
+        if (tiempoActual - tiempoUltimoEnemigo > TIMEOUT_SEGUNDOS)
         {
-            Debug.LogWarning($"[ML-CORE] TIMEOUT: {TIMEOUT_SEGUNDOS/60} minutos sin actividad hostil. Guardando y abortando instancia.");
-            gameManager.GuardarPartidaEnDisco();
-            
-            #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-            #else
-                Application.Quit();
-            #endif
+            Debug.LogWarning($"[ML-CORE] TIMEOUT: {TIMEOUT_SEGUNDOS/60} minutos sin ver enemigos. Reiniciando run.");
+            gameManager.enabled = false;
+            GestionarMuerteBot();
+            return;
+        }
+
+        // TIMEOUT 2: Sin matar a nadie (NUEVO)
+        if (tiempoActual - tiempoUltimaMuerteEnemigo > TIMEOUT_MATA_ENEMIGO)
+        {
+            Debug.LogWarning($"<color=red>[ML-CORE] TIMEOUT: {TIMEOUT_MATA_ENEMIGO/60} minutos sin matar a ningún enemigo. Bot atascado o débil. Reiniciando run.</color>");
+            gameManager.enabled = false;
+            GestionarMuerteBot();
+            return;
         }
     }
 
@@ -119,16 +121,14 @@ public class ML_Core : MonoBehaviour
         }
     }
 
-    public void RegistrarContactoEnemigo()
-    {
-        tiempoUltimoEnemigo = Time.realtimeSinceStartup;
-    }
+    public void RegistrarContactoEnemigo() => tiempoUltimoEnemigo = Time.realtimeSinceStartup;
+    
+    public void RegistrarMuerteEnemigo() => tiempoUltimaMuerteEnemigo = Time.realtimeSinceStartup; // NUEVO
 
     public void GestionarMuerteBot()
     {
         salasVisitadas.Clear();
-
-        Debug.Log($"<color=cyan>[ML-CORE]</color> Bot eliminado. Ejecución {ejecucionesActuales + 1}/{limiteEjecuciones} completada. Guardando SQL...");
+        Debug.Log($"<color=cyan>[ML-CORE]</color> Ejecución {ejecucionesActuales + 1}/{limiteEjecuciones} completada. Guardando SQL...");
         
         if (gameManager != null) gameManager.GuardarPartidaEnDisco();
         operacionesEnMemoria = 0;
@@ -152,7 +152,11 @@ public class ML_Core : MonoBehaviour
         }
     }
 
-    public void ResetearTimeout() => tiempoUltimoEnemigo = Time.realtimeSinceStartup;
+    public void ResetearTimeout() 
+    {
+        tiempoUltimoEnemigo = Time.realtimeSinceStartup;
+        tiempoUltimaMuerteEnemigo = Time.realtimeSinceStartup;
+    }
 
     private bool FlushSeguridadAlCerrar()
     {

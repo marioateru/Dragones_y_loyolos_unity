@@ -60,8 +60,9 @@ MonoBehaviour:
   <xPos>k__BackingField: 0
   <yPos>k__BackingField: 0
   accionesPermitidas: 
-  <id_monstruos>k__BackingField: 
-  <desafio>k__BackingField: 0
+  rangoVision: 8
+  umbralHuida: 0.24
+  probContraataque: 0.35
 --- !u!114 &1212691631311904118
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -393,7 +393,7 @@
     <property name="idSalaDestino" type="int" value="4"/>
    </properties>
   </object>
-  <object id="29" template="Puerta_tiled.tx" type="Puerta" x="40" y="172">
+  <object id="29" template="Puerta_tiled.tx" type="Puerta" x="40" y="168">
    <properties>
     <property name="destinoX" type="int" value="-11"/>
     <property name="destinoY" type="int" value="28"/>
