@@ -10,6 +10,10 @@ public class EnemyComponent : Entidad
     [Tooltip("Porcentaje de vida (0.0 a 1.0) al que el enemigo huirá.")]
     [Range(0f, 1f)] 
     public float umbralHuida = 0.3f;
+
+    [Tooltip("Probabilidad de atacar aunque esté huyendo.")]
+    [Range(0f, 1f)] 
+    public float probContraataque = 0.35f;
     
     private PlayerComponent jugadorObjetivo;
     private TileCollisionChecker collisionChecker;
@@ -60,14 +64,17 @@ public class EnemyComponent : Entidad
         }
 
         bool hayLineaDeVision = !collisionChecker.HayMuroEnRuta(miX, miY, jugadorX, jugadorY);
+        bool valiente = estaHuyendo && (UnityEngine.Random.value <= probContraataque);
 
-        if (estaHuyendo)
+        if (estaHuyendo && !valiente)
         {
             Debug.Log($"<color=orange>[IA Enemiga]</color> {gameObject.name} entra en pánico (HP: {hp}/{vidaMaxima}). ¡Huye!");
             Vector2Int casillaEscape = CalcularMejorCasilla(miX, miY, jugadorX, jugadorY, huir: true);
             SubmitAction(Acciones.Moverse, casillaEscape.x, casillaEscape.y);
             return;
         }
+
+        if (valiente) Debug.Log($"<color=orange>[IA Enemiga]</color> {gameObject.name} huye, pero decide atacar.");
 
         if (hayLineaDeVision && distancia <= rangoVision)
         {
@@ -91,9 +98,6 @@ public class EnemyComponent : Entidad
         }
     }
 
-    /// <summary>
-    /// Escanea las 8 casillas adyacentes y escoge la mejor según si quiere acercarse o alejarse.
-    /// </summary>
     private Vector2Int CalcularMejorCasilla(int origenX, int origenY, int targetX, int targetY, bool huir)
     {
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
@@ -108,11 +112,8 @@ public class EnemyComponent : Entidad
                 int checkX = origenX + x;
                 int checkY = origenY + y;
 
-                // FIX ANTI-ATASCOS: Evita atravesar esquinas
                 if (collisionChecker.HayMuroEnRuta(origenX, origenY, checkX, checkY)) continue;
                 if (gameManager.ObtenerEntidadEnCasilla(checkX, checkY) != null) continue;
-                
-                // FIX OUT OF BOUNDS: Las puertas se consideran muros para los enemigos
                 if (gameManager.salaActual.ObtenerPuerta(checkX, checkY) != null) continue;
 
                 int distAlJugador = Mathf.Max(Mathf.Abs(checkX - targetX), Mathf.Abs(checkY - targetY));
@@ -135,13 +136,9 @@ public class EnemyComponent : Entidad
                 }
             }
         }
-
         return mejorCasilla;
     }
 
-    /// <summary>
-    /// Escanea las 8 casillas adyacentes, descarta los obstáculos y devuelve una aleatoria.
-    /// </summary>
     private Vector2Int CalcularCasillaAleatoria(int origenX, int origenY)
     {
         List<Vector2Int> casillasValidas = new List<Vector2Int>();
@@ -155,10 +152,8 @@ public class EnemyComponent : Entidad
                 int checkX = origenX + x;
                 int checkY = origenY + y;
 
-                // FIX ANTI-ATASCOS
                 if (!collisionChecker.HayMuroEnRuta(origenX, origenY, checkX, checkY) && gameManager.ObtenerEntidadEnCasilla(checkX, checkY) == null)
                 {
-                    // FIX OUT OF BOUNDS: Jamás elegir una casilla con puerta
                     if (gameManager.salaActual.ObtenerPuerta(checkX, checkY) == null)
                     {
                         casillasValidas.Add(new Vector2Int(checkX, checkY));
@@ -179,9 +174,7 @@ public class EnemyComponent : Entidad
     private void OnDrawGizmosSelected()
     {
         Gizmos.color = new Color(1f, 0.2f, 0.2f, 0.6f);
-
         float tamanoLado = (rangoVision * 2) + 1; 
-        
         Gizmos.DrawWireCube(transform.position, new Vector3(tamanoLado, tamanoLado, 0f));
     }
 }

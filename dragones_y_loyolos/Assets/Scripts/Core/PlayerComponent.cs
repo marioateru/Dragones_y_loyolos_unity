@@ -11,11 +11,11 @@ public class PlayerComponent : Entidad
     [SerializeField] private SQLManager sqlManager;
     [SerializeField] private int pasosSinEnemigo = 0;
     [SerializeField] private float porcentajeVidaBaja = 0.4f;
-    
-    // [Header("Límites de IA")]
-    // [Tooltip("Si el bot da este número de pasos sin cruzarse con un enemigo, asumirá que está atascado.")]
-    // [SerializeField] private int limitePasosExploracion = 250;
+    [SerializeField] private float probContraataqueML = 0.15f;
 
+    // MEMORIA DEL BOT PARA NO ATASCARSE
+    private List<Vector2Int> historialPosiciones = new List<Vector2Int>();
+    
     public override void Awake()
     {
         base.Awake();
@@ -27,6 +27,12 @@ public class PlayerComponent : Entidad
     {
         if (IsDead()) 
         {
+            // FIX FREEZE: Si muere, avisar al ML y consumir turno.
+            if (ML_Core.IsMLMode) 
+            {
+                Debug.Log("[ML-BOT] Jugador muerto. Reiniciando simulación...");
+                ML_Core.Instancia?.GestionarMuerteBot();
+            }
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
@@ -63,8 +69,8 @@ public class PlayerComponent : Entidad
         }
         else if (puerta != null)
         {
+            // Vuelto a Moverse según tu diseño
             if (accionesPermitidas.Contains(Acciones.Moverse)) opciones.Add(Acciones.Moverse);
-            if (accionesPermitidas.Contains(Acciones.Interactuar)) opciones.Add(Acciones.Interactuar);
         }
         else
         {
@@ -112,75 +118,83 @@ public class PlayerComponent : Entidad
     {
         int miX = Mathf.RoundToInt(xPos);
         int miY = Mathf.RoundToInt(yPos);
+
+        historialPosiciones.Add(new Vector2Int(miX, miY));
+        if (historialPosiciones.Count > 5) historialPosiciones.RemoveAt(0);
         
         if (gameManager.salaActual != null)
         {
             ML_Core.Instancia.salasVisitadas.Add(gameManager.salaActual.idSalaActual);
         }
 
-        // 1. OMNISCIENCIA: Escanea la sala entera al instante
         int enemigosCercanos;
         Entidad enemigoPelear = EscanearMejorEnemigoGlobal(miX, miY, out enemigosCercanos); 
 
-        // Si NO hay enemigos en toda la sala...
         if (enemigoPelear == null)
         {
             PuertaMazmorra puertaDestino = SeleccionarMejorPuerta(miX, miY);
             if (puertaDestino != null)
             {
-                // Todavía quedan salas por limpiar, vamos a la puerta
                 int pX = puertaDestino.logicX;
                 int pY = puertaDestino.logicY;
                 
                 if (Mathf.Max(Mathf.Abs(miX - pX), Mathf.Abs(miY - pY)) <= 1)
                 {
                     ML_Core.Instancia?.RegistrarOperacionIA();
-                    SubmitAction(Acciones.Moverse, pX, pY);
+                    SubmitAction(Acciones.Moverse, pX, pY); // Vuelto a Moverse
                     return;
                 }
                 
                 Vector2Int avance = CalcularSiguientePasoRutaBFS(miX, miY, pX, pY);
                 if (avance.x == miX && avance.y == miY) avance = CalcularCasillaAleatoria(miX, miY);
                 
+                if (historialPosiciones.Contains(avance) && UnityEngine.Random.value < 0.5f) 
+                    avance = CalcularCasillaAleatoria(miX, miY);
+
                 ML_Core.Instancia?.RegistrarOperacionIA();
                 SubmitAction(Acciones.Moverse, avance.x, avance.y);
                 return;
             }
             else
             {
-                // ¡CONDICIÓN DE ÉXITO ABSOLUTO! Sin enemigos y sin puertas nuevas.
                 Debug.Log("<color=green><b>[ML-BOT] ¡MAZMORRA LIMPIADA!</b> Todos los enemigos han sido derrotados. Reiniciando simulación.</color>");
                 if (ML_Core.Instancia != null) ML_Core.Instancia.GestionarMuerteBot(); 
-                else SubmitAction(Acciones.Moverse, miX, miY); 
+                
+                // FIX FREEZE: Nunca salir de aquí sin consumir el turno, o Unity explotará.
+                SubmitAction(Acciones.Moverse, miX, miY); 
                 return;
             }
         }
 
-        // 2. A PARTIR DE AQUÍ: HAY ENEMIGOS EN LA SALA
         pasosSinEnemigo = 0; 
         ML_Core.Instancia?.RegistrarContactoEnemigo();
 
         int vidaMax = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades); 
         
-        // MODO SUPERVIVENCIA
         if (hp <= vidaMax * porcentajeVidaBaja)
         {
-            // FIX: Ignoramos la BD. Si está herido y a salvo (lejos), SIEMPRE se cura.
-            if (enemigosCercanos == 0 && hp < vidaMax)
+            bool valiente = UnityEngine.Random.value <= probContraataqueML;
+
+            if (!valiente)
             {
+                if (enemigosCercanos == 0 && hp < vidaMax)
+                {
+                    ML_Core.Instancia?.RegistrarOperacionIA();
+                    SubmitAction(Acciones.Consumir, miX, miY);
+                    return;
+                }
+
+                Vector2Int escape = CalcularCasillaHuida(miX, miY, enemigoPelear); 
                 ML_Core.Instancia?.RegistrarOperacionIA();
-                SubmitAction(Acciones.Consumir, miX, miY);
+                SubmitAction(Acciones.Moverse, escape.x, escape.y);
                 return;
             }
-
-            // SPRINT DE HUIDA: Si hay peligro, salta con todo su rango de velocidad
-            Vector2Int escape = CalcularCasillaHuida(miX, miY, enemigoPelear); 
-            ML_Core.Instancia?.RegistrarOperacionIA();
-            SubmitAction(Acciones.Moverse, escape.x, escape.y);
-            return;
+            else
+            {
+                Debug.Log("<color=orange>[ML-BOT]</color> Herido, pero decide contraatacar a la desesperada.");
+            }
         }
 
-        // 3. COMBATE TÁCTICO
         int enX = Mathf.RoundToInt(enemigoPelear.xPos);
         int enY = Mathf.RoundToInt(enemigoPelear.yPos);
         int distancia = Mathf.Max(Mathf.Abs(miX - enX), Mathf.Abs(miY - enY));
@@ -201,6 +215,9 @@ public class PlayerComponent : Entidad
             Vector2Int avance = CalcularSiguientePasoRutaBFS(miX, miY, enX, enY);
             if (avance.x == miX && avance.y == miY) avance = CalcularCasillaAleatoria(miX, miY);
             
+            if (historialPosiciones.Contains(avance) && UnityEngine.Random.value < 0.5f) 
+                avance = CalcularCasillaAleatoria(miX, miY);
+
             ML_Core.Instancia?.RegistrarOperacionIA();
             SubmitAction(Acciones.Moverse, avance.x, avance.y);
         }
@@ -255,8 +272,6 @@ public class PlayerComponent : Entidad
                 }
             }
         }
-
-        // Si devuelve NULL, el GameManager interpretará que la mazmorra entera está explorada
         return puertaInexplorada; 
     }
 
@@ -302,9 +317,14 @@ public class PlayerComponent : Entidad
         cola.Enqueue(inicio);
         padres[inicio] = inicio;
         bool encontrado = false;
+        
+        int iteraciones = 0; 
 
         while (cola.Count > 0)
         {
+            iteraciones++;
+            if (iteraciones > 500) break; 
+
             Vector2Int actual = cola.Dequeue();
             if (actual == destino) { encontrado = true; break; }
 
@@ -317,6 +337,9 @@ public class PlayerComponent : Entidad
 
                     if (!padres.ContainsKey(vecino) && !collisionChecker.HayMuroEnRuta(actual.x, actual.y, vecino.x, vecino.y))
                     {
+                        bool ocupado = gameManager.ObtenerEntidadEnCasilla(vecino.x, vecino.y) != null;
+                        if (ocupado && vecino != destino) continue;
+
                         padres[vecino] = actual;
                         cola.Enqueue(vecino);
                     }
@@ -348,7 +371,6 @@ public class PlayerComponent : Entidad
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
         int mejorDistancia = -1; 
 
-        // EL SPRINT DE HUIDA: Usamos Mathf.Max(1, velocidad) para buscar la casilla más segura de un tirón.
         int rangoEscape = Mathf.Max(1, velocidad);
         List<Vector2Int> candidatas = ObtenerCasillasValidasAlrededor(origenX, origenY, rangoEscape);
 

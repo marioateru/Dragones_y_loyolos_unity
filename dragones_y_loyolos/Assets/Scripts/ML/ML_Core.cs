@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using System;
 using System.IO;
 using System.Collections.Generic;
@@ -30,6 +31,7 @@ public class ML_Core : MonoBehaviour
     
     private GameManager gameManager;
     private float tiempoUltimoEnemigo;
+    private string idInstanciaBase;
 
     void Awake()
     {
@@ -61,13 +63,19 @@ public class ML_Core : MonoBehaviour
 
         if (IsMLMode)
         {
-            string idInstancia = Guid.NewGuid().ToString().Substring(0, 8);
-            
-            GameSession.dbActiva = Application.isEditor ? $"ML_Save_EDITOR_{idInstancia}.db" : $"ML_Save_{idInstancia}.db";
+            idInstanciaBase = Guid.NewGuid().ToString().Substring(0, 8);
             GameSession.nombrePartidaActiva = "ML_PlayerBot_Simulation";
             
-            Debug.Log($"<color=magenta>[ML-CORE]</color> Instancia iniciada. BD asignada: {GameSession.dbActiva}. Límite: {limiteEjecuciones}");
+            AsignarNuevaBD();
+            
+            Debug.Log($"<color=magenta>[ML-CORE]</color> Instancia iniciada. Límite: {limiteEjecuciones}");
         }
+    }
+
+    private void AsignarNuevaBD()
+    {
+        GameSession.dbActiva = Application.isEditor ? $"ML_Save_EDITOR_{idInstanciaBase}_Run_{ejecucionesActuales}.db" : $"ML_Save_{idInstanciaBase}_Run_{ejecucionesActuales}.db";
+        Debug.Log($"[ML-CORE] Nueva BD en uso: {GameSession.dbActiva}");
     }
 
     void Start()
@@ -118,14 +126,14 @@ public class ML_Core : MonoBehaviour
 
     public void GestionarMuerteBot()
     {
-        // Olvida las salas visitadas
         salasVisitadas.Clear();
 
-        ejecucionesActuales++;
-        Debug.Log($"<color=cyan>[ML-CORE]</color> Bot eliminado. Ejecución {ejecucionesActuales}/{limiteEjecuciones} completada. Guardando SQL...");
+        Debug.Log($"<color=cyan>[ML-CORE]</color> Bot eliminado. Ejecución {ejecucionesActuales + 1}/{limiteEjecuciones} completada. Guardando SQL...");
         
         if (gameManager != null) gameManager.GuardarPartidaEnDisco();
         operacionesEnMemoria = 0;
+        
+        ejecucionesActuales++;
 
         if (ejecucionesActuales >= limiteEjecuciones)
         {
@@ -138,8 +146,9 @@ public class ML_Core : MonoBehaviour
         }
         else
         {
-            if (gameManager != null) gameManager.RecargarPartidaDesdeTimestep(1); 
+            AsignarNuevaBD();
             ResetearTimeout();
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }
 

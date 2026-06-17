@@ -164,12 +164,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::ML_Core
   forzarModoML_EnEditor: 1
-  operacionesPorSegundo: 6000
+  operacionesPorSegundo: -1
   acumuladorOperaciones: 0
-  limiteEjecuciones: 10
+  limiteEjecuciones: 2
   ejecucionesActuales: 0
   operacionesEnMemoria: 0
-  limiteOperacionesGuardado: 1000
+  limiteOperacionesGuardado: 5000
   TIMEOUT_SEGUNDOS: 60
 --- !u!1 &68652462
 GameObject:
