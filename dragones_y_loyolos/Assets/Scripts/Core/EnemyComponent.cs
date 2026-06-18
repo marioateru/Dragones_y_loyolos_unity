@@ -57,7 +57,6 @@ public class EnemyComponent : Entidad
         int jugadorY = Mathf.RoundToInt(jugadorObjetivo.yPos);
         int distReal = Mathf.Max(Mathf.Abs(miX - jugadorX), Mathf.Abs(miY - jugadorY));
 
-        // FIX BLINDFOLD: El enemigo necesita Línea de Visión (LOS) real, sin muros en medio.
         bool tieneLineaVision = !collisionChecker.HayMuroEnRuta(miX, miY, jugadorX, jugadorY);
 
         if (distReal > rangoVision || !tieneLineaVision)

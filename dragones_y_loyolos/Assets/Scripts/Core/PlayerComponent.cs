@@ -11,17 +11,21 @@ public class PlayerComponent : Entidad
     [SerializeField] private SQLManager sqlManager;
     [SerializeField] private int pasosSinEnemigo = 0;
     [SerializeField] private float porcentajeVidaBaja = 0.4f;
-
-    // TARGET LOCKS: Evitan que el bot baile entre dos opciones con distancias similares
+    [SerializeField] private int areaCasillasDeHuidaBFS = 15;
+    private bool modoRetirada = false;
     private PuertaMazmorra puertaObjetivo = null;
     private Entidad enemigoObjetivo = null;
 
-    // A* RAM (Reutilizada para que el Garbage Collector no sature la simulación)
+    // A* Star & Pathing RAM
     private List<Vector2Int> openList = new List<Vector2Int>(5000);
     private HashSet<Vector2Int> closedList = new HashSet<Vector2Int>(5000);
     private Dictionary<Vector2Int, Vector2Int> cameFrom = new Dictionary<Vector2Int, Vector2Int>(5000);
     private Dictionary<Vector2Int, int> gScore = new Dictionary<Vector2Int, int>(5000);
     private Dictionary<Vector2Int, int> fScore = new Dictionary<Vector2Int, int>(5000);
+    
+    private List<Vector2Int> debugRutaActual = new List<Vector2Int>();
+    private Dictionary<Vector2Int, float> debugScoresBFS = new Dictionary<Vector2Int, float>();
+    private Vector2Int debugMejorCasillaBFS = new Vector2Int(-9999, -9999);
 
     public override void Awake()
     {
@@ -117,6 +121,8 @@ public class PlayerComponent : Entidad
     #region Métodos para modo bot
     private void EjecutarComportamientoBotML()
     {
+        debugScoresBFS.Clear(); 
+        
         int miX = Mathf.RoundToInt(xPos);
         int miY = Mathf.RoundToInt(yPos);
         
@@ -125,11 +131,26 @@ public class PlayerComponent : Entidad
             ML_Core.Instancia.salasVisitadas.Add(gameManager.salaActual.idSalaActual);
         }
 
+        int vidaMax = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades); 
+        
+        // Evaluar estado de curación
+        if (hp <= vidaMax * porcentajeVidaBaja) modoRetirada = true;
+        if (hp >= vidaMax) modoRetirada = false;
+
         int enemigosCercanos;
         Entidad enemigoPelear = EscanearMejorEnemigoGlobal(miX, miY, out enemigosCercanos); 
 
+        // Escenario: Sala vacía (sin enemigos visibles en absoluto)
         if (enemigoPelear == null)
         {
+            if (modoRetirada && hp < vidaMax)
+            {
+                debugRutaActual.Clear();
+                ML_Core.Instancia?.RegistrarOperacionIA();
+                SubmitAction(Acciones.Consumir, miX, miY);
+                return;
+            }
+
             enemigoObjetivo = null;
 
             PuertaMazmorra puertaDestino = SeleccionarMejorPuerta(miX, miY);
@@ -140,17 +161,16 @@ public class PlayerComponent : Entidad
                 
                 if (Mathf.Max(Mathf.Abs(miX - pX), Mathf.Abs(miY - pY)) <= 1)
                 {
+                    debugRutaActual.Clear();
                     ML_Core.Instancia?.RegistrarOperacionIA();
                     SubmitAction(Acciones.Moverse, pX, pY);
                     puertaObjetivo = null;
                     return;
                 }
                 
-                Vector2Int avance = CalcularSiguientePasoAStar(miX, miY, pX, pY);
-                if (avance.x == -9999) avance = CalcularCasillaAleatoria(miX, miY);
-                
+                List<Vector2Int> ruta = CalcularRutaAStar(miX, miY, pX, pY);
                 ML_Core.Instancia?.RegistrarOperacionIA();
-                EjecutarPaso(avance.x, avance.y);
+                EjecutarAvanceEnRuta(ruta);
                 return;
             }
             else
@@ -166,49 +186,88 @@ public class PlayerComponent : Entidad
         puertaObjetivo = null;
         ML_Core.Instancia?.RegistrarContactoEnemigo();
 
-        int vidaMax = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades); 
-        
-        if (hp <= vidaMax * porcentajeVidaBaja)
+        // Escenario: Modo Retirada Activo (buscando sanar)
+        if (modoRetirada)
         {
-            if (enemigosCercanos == 0 && hp < vidaMax)
+            if (enemigosCercanos == 0) // Zona segura
             {
+                debugRutaActual.Clear();
                 ML_Core.Instancia?.RegistrarOperacionIA();
                 SubmitAction(Acciones.Consumir, miX, miY);
                 return;
             }
 
+            // Enemigo cerca, buscar escape
             Vector2Int escape = CalcularCasillaHuida(miX, miY, enemigoPelear); 
+            List<Vector2Int> ruta = CalcularRutaAStar(miX, miY, escape.x, escape.y);
             ML_Core.Instancia?.RegistrarOperacionIA();
-            SubmitAction(Acciones.Moverse, escape.x, escape.y);
+            EjecutarAvanceEnRuta(ruta);
             return;
         }
 
+        // Escenario: Pelea normal
         int enX = Mathf.RoundToInt(enemigoPelear.xPos);
         int enY = Mathf.RoundToInt(enemigoPelear.yPos);
         int distancia = Mathf.Max(Mathf.Abs(miX - enX), Mathf.Abs(miY - enY));
 
         if (distancia <= 1)
         {
+            debugRutaActual.Clear();
             ML_Core.Instancia?.RegistrarOperacionIA();
             SubmitAction(Acciones.Atacar, enX, enY);
         }
         else if (enemigosCercanos >= 2 && distancia <= 4)
         {
             Vector2Int flanqueo = CalcularCasillaFlanqueo(miX, miY, enX, enY);
+            List<Vector2Int> ruta = CalcularRutaAStar(miX, miY, flanqueo.x, flanqueo.y);
             ML_Core.Instancia?.RegistrarOperacionIA();
-            EjecutarPaso(flanqueo.x, flanqueo.y);
+            EjecutarAvanceEnRuta(ruta);
         }
         else
         {
-            Vector2Int avance = CalcularSiguientePasoAStar(miX, miY, enX, enY);
-            if (avance.x == -9999) avance = CalcularCasillaAleatoria(miX, miY);
-            
+            List<Vector2Int> ruta = CalcularRutaAStar(miX, miY, enX, enY);
             ML_Core.Instancia?.RegistrarOperacionIA();
-            EjecutarPaso(avance.x, avance.y);
+            EjecutarAvanceEnRuta(ruta);
         }
     }
 
-    private void EjecutarPaso(int x, int y)
+    private void EjecutarAvanceEnRuta(List<Vector2Int> ruta)
+    {
+        debugRutaActual = ruta;
+
+        if (ruta == null || ruta.Count == 0) 
+        {
+            Vector2Int fallback = CalcularCasillaAleatoria(Mathf.RoundToInt(xPos), Mathf.RoundToInt(yPos));
+            EjecutarPasoSimple(fallback.x, fallback.y);
+            return;
+        }
+
+        int miX = Mathf.RoundToInt(xPos);
+        int miY = Mathf.RoundToInt(yPos);
+
+        int maxVelocidad = Mathf.Max(1, velocidad);
+        int pasosAleatorios = UnityEngine.Random.Range(1, maxVelocidad + 1);
+        int maxPasos = Mathf.Min(ruta.Count, pasosAleatorios);
+        
+        Vector2Int mejorSalto = ruta[0];
+        
+        for (int i = maxPasos - 1; i >= 0; i--)
+        {
+            Vector2Int nodo = ruta[i];
+            
+            if (i > 0 && gameManager.ObtenerEntidadEnCasilla(nodo.x, nodo.y) != null) continue;
+
+            if (!collisionChecker.HayMuroEnRuta(miX, miY, nodo.x, nodo.y))
+            {
+                mejorSalto = nodo;
+                break;
+            }
+        }
+
+        EjecutarPasoSimple(mejorSalto.x, mejorSalto.y);
+    }
+
+    private void EjecutarPasoSimple(int x, int y)
     {
         Entidad obstaculo = gameManager.ObtenerEntidadEnCasilla(x, y);
         if (obstaculo != null && obstaculo != this)
@@ -317,12 +376,13 @@ public class PlayerComponent : Entidad
         return mejor;
     }
 
-    private Vector2Int CalcularSiguientePasoAStar(int startX, int startY, int targetX, int targetY)
+    private List<Vector2Int> CalcularRutaAStar(int startX, int startY, int targetX, int targetY)
     {
+        List<Vector2Int> path = new List<Vector2Int>();
         Vector2Int start = new Vector2Int(startX, startY);
         Vector2Int target = new Vector2Int(targetX, targetY);
 
-        if (start == target) return start;
+        if (start == target) return path;
 
         openList.Clear();
         closedList.Clear();
@@ -355,11 +415,12 @@ public class PlayerComponent : Entidad
                 Vector2Int curr = target;
                 while (cameFrom.ContainsKey(curr))
                 {
-                    Vector2Int prev = cameFrom[curr];
-                    if (prev == start) return curr;
-                    curr = prev;
+                    path.Add(curr);
+                    curr = cameFrom[curr];
+                    if (curr == start) break;
                 }
-                return start;
+                path.Reverse();
+                return path;
             }
 
             openList.Remove(current);
@@ -392,7 +453,7 @@ public class PlayerComponent : Entidad
                         moveCost += 100; 
                     }
 
-                    int tentativeG = gScore[current] + moveCost;
+                    int tentativeG = gScore.GetValueOrDefault(current, 0) + moveCost;
 
                     if (!openList.Contains(neighbor)) openList.Add(neighbor);
                     else if (tentativeG >= gScore.GetValueOrDefault(neighbor, int.MaxValue)) continue;
@@ -404,31 +465,108 @@ public class PlayerComponent : Entidad
             }
         }
         
-        return new Vector2Int(-9999, -9999); 
+        return path; 
+    }
+
+    private List<Vector2Int> GetReachableTiles(int startX, int startY, int maxPasos)
+    {
+        List<Vector2Int> reachable = new List<Vector2Int>();
+        Queue<Vector2Int> queue = new Queue<Vector2Int>();
+        HashSet<Vector2Int> visited = new HashSet<Vector2Int>();
+
+        Vector2Int start = new Vector2Int(startX, startY);
+        queue.Enqueue(start);
+        visited.Add(start);
+
+        int distance = 0;
+        
+        while(queue.Count > 0 && distance < maxPasos)
+        {
+            int levelSize = queue.Count;
+            for(int i = 0; i < levelSize; i++)
+            {
+                Vector2Int curr = queue.Dequeue();
+                reachable.Add(curr);
+
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    for (int dy = -1; dy <= 1; dy++)
+                    {
+                        if (dx == 0 && dy == 0) continue;
+                        Vector2Int neighbor = new Vector2Int(curr.x + dx, curr.y + dy);
+                        
+                        if (!visited.Contains(neighbor))
+                        {
+                            if (Mathf.Abs(dx) == 1 && Mathf.Abs(dy) == 1)
+                            {
+                                if (collisionChecker.HayMuroEnRuta(curr.x, curr.y, curr.x + dx, curr.y) || 
+                                    collisionChecker.HayMuroEnRuta(curr.x, curr.y, curr.x, curr.y + dy)) 
+                                    continue;
+                            }
+
+                            if (!collisionChecker.HayMuroEnRuta(curr.x, curr.y, neighbor.x, neighbor.y))
+                            {
+                                visited.Add(neighbor);
+                                queue.Enqueue(neighbor);
+                            }
+                        }
+                    }
+                }
+            }
+            distance++;
+        }
+        return reachable;
     }
 
     private Vector2Int CalcularCasillaHuida(int origenX, int origenY, Entidad enemigoMasCercano)
     {
-        if (enemigoMasCercano == null) return CalcularCasillaAleatoria(origenX, origenY);
-
         int targetX = Mathf.RoundToInt(enemigoMasCercano.xPos);
         int targetY = Mathf.RoundToInt(enemigoMasCercano.yPos);
 
+        List<Vector2Int> candidatas = GetReachableTiles(origenX, origenY, areaCasillasDeHuidaBFS);
+        
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
-        int mejorDistancia = -1; 
+        int mejorPuntuacion = -999999;
+        int minPuntuacion = 999999;
 
-        int rangoEscape = Mathf.Max(1, velocidad);
-        List<Vector2Int> candidatas = ObtenerCasillasValidasAlrededor(origenX, origenY, rangoEscape);
+        Dictionary<Vector2Int, int> rawScores = new Dictionary<Vector2Int, int>();
 
-        foreach (var cas in candidatas)
+        foreach(var cas in candidatas)
         {
-            int distAlEnemigo = Mathf.Max(Mathf.Abs(cas.x - targetX), Mathf.Abs(cas.y - targetY));
-            if (distAlEnemigo > mejorDistancia)
+            int distEnemigo = Mathf.Max(Mathf.Abs(cas.x - targetX), Mathf.Abs(cas.y - targetY));
+            
+            int murosAdyacentes = 0;
+            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x+1, cas.y)) murosAdyacentes++;
+            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x-1, cas.y)) murosAdyacentes++;
+            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x, cas.y+1)) murosAdyacentes++;
+            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x, cas.y-1)) murosAdyacentes++;
+
+            int puntuacion = (distEnemigo * 10) + (murosAdyacentes * 50); 
+            rawScores[cas] = puntuacion;
+            
+            if (puntuacion > mejorPuntuacion)
             {
-                mejorDistancia = distAlEnemigo;
+                mejorPuntuacion = puntuacion;
                 mejorCasilla = cas;
             }
+            if (puntuacion < minPuntuacion)
+            {
+                minPuntuacion = puntuacion;
+            }
         }
+
+        // Normalizar puntuaciones para pintar colores de 0 a 1
+        foreach(var kvp in rawScores)
+        {
+            float norm = 0f;
+            if (mejorPuntuacion > minPuntuacion)
+            {
+                norm = (float)(kvp.Value - minPuntuacion) / (mejorPuntuacion - minPuntuacion);
+            }
+            debugScoresBFS[kvp.Key] = norm;
+        }
+
+        debugMejorCasillaBFS = mejorCasilla;
         return mejorCasilla;
     }
 
@@ -457,6 +595,45 @@ public class PlayerComponent : Entidad
             }
         }
         return lista;
+    }
+    
+    private void OnDrawGizmos()
+    {
+        // 1. Draw BFS Search Area (Gradient Red->Yellow->Greenish)
+        if (debugScoresBFS != null && debugScoresBFS.Count > 0)
+        {
+            foreach (var kvp in debugScoresBFS)
+            {
+                Vector3 wpPos = new Vector3(kvp.Key.x + 0.5f, -kvp.Key.y - 0.5f, 0f);
+                
+                if (kvp.Key == debugMejorCasillaBFS)
+                {
+                    // Casilla ganadora - Verde puro y más grande
+                    Gizmos.color = new Color(0f, 1f, 0f, 0.85f); 
+                    Gizmos.DrawCube(wpPos, new Vector3(0.9f, 0.9f, 0.1f));
+                }
+                else
+                {
+                    // Resto de casillas en gradiente
+                    Gizmos.color = Color.Lerp(new Color(1f, 0f, 0f, 0.35f), new Color(0.5f, 1f, 0f, 0.35f), kvp.Value);
+                    Gizmos.DrawCube(wpPos, new Vector3(0.8f, 0.8f, 0.1f));
+                }
+            }
+        }
+
+        // 2. Draw A* Pathing (Cyan dots & lines)
+        if (debugRutaActual == null || debugRutaActual.Count == 0) return;
+
+        Gizmos.color = Color.cyan;
+        Vector3 previousPos = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0f);
+        
+        foreach (var wp in debugRutaActual)
+        {
+            Vector3 wpPos = new Vector3(wp.x + 0.5f, -wp.y - 0.5f, 0f);
+            Gizmos.DrawSphere(wpPos, 0.2f);
+            Gizmos.DrawLine(previousPos, wpPos);
+            previousPos = wpPos;
+        }
     }
     #endregion
 }

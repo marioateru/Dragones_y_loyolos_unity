@@ -112,13 +112,13 @@ public class GameManager : MonoBehaviour
         int safeGuard = 0;
         bool procesandoLogica = true;
         
-        int limiteBucles = 100; 
+        int limiteBucles = 100;
 
         if (ML_Core.IsMLMode && ML_Core.Instancia != null)
         {
             if (ML_Core.Instancia.operacionesPorSegundo <= 0)
             {
-                limiteBucles = 5000000; 
+                limiteBucles = 5000000;
             }
             else
             {
@@ -138,8 +138,8 @@ public class GameManager : MonoBehaviour
                 case GameState.AvanzandoCola: PedirAccionASiguienteEntidad(); break;
                 case GameState.ProcesandoTurno: ProcesarAcciones(); break;
                 case GameState.FinalizandoTurno: LimpiarYComprobarGuardado(); break;
-                // FIX: El bucle se atascaba aquí millones de veces si era Game Over.
-                case GameState.GameOver: procesandoLogica = false; break; 
+                case GameState.GameOver: procesandoLogica = false; break;
+                default: procesandoLogica = false; break;
             }
         }
     }
@@ -184,7 +184,7 @@ public class GameManager : MonoBehaviour
             sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
             nuevoObj.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
 
-            ComponenteVisual visuales = nuevoObj.GetComponentInChildren<ComponenteVisual>();
+            ComponenteVisual visuales = nuevoObj.GetComponent<ComponenteVisual>();
             if (visuales != null)
             {
                 string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
@@ -242,6 +242,7 @@ public class GameManager : MonoBehaviour
         if (indiceEntidadPensando < entityQueue.Count)
         {
             Entidad actorTurno = entityQueue[indiceEntidadPensando];
+            
             actorTurno.SetEstaDefendido(false); 
             
             estadoActual = GameState.EsperandoEleccion;
@@ -295,22 +296,27 @@ public class GameManager : MonoBehaviour
         
         if (jugadorPrincipal != null && jugadorPrincipal.IsDead())
         {
-            estadoActual = GameState.GameOver;
-            
-            // FIX: Si muere en combate, apaga todo e invoca recarga limpia.
-            if (ML_Core.IsMLMode && ML_Core.Instancia != null)
-            {
-                this.enabled = false;
-                ML_Core.Instancia.GestionarMuerteBot();
-                return;
-            }
-            
-            GuardarPartidaEnDisco();
-            InGameUIController.Instancia?.MostrarGameOver();
-            return;
+            TriggerGameOver();
+            return; 
         }
         
         if (salaActual != null) estadoActual = GameState.FinalizandoTurno;
+    }
+
+    private void TriggerGameOver()
+    {
+        if (estadoActual == GameState.GameOver) return;
+        estadoActual = GameState.GameOver;
+        GuardarPartidaEnDisco();
+
+        if (ML_Core.IsMLMode && ML_Core.Instancia != null)
+        {
+            ML_Core.Instancia.GestionarMuerteBot();
+        }
+        else
+        {
+            InGameUIController.Instancia?.MostrarGameOver();
+        }
     }
 
     private void LimpiarYComprobarGuardado()

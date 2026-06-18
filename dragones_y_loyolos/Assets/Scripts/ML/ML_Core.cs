@@ -2,6 +2,7 @@ using UnityEngine;
 using System;
 using System.IO;
 using System.Collections.Generic;
+using UnityEngine.SceneManagement;
 
 public class ML_Core : MonoBehaviour
 {
@@ -61,13 +62,16 @@ public class ML_Core : MonoBehaviour
 
         if (IsMLMode)
         {
-            string idInstancia = Guid.NewGuid().ToString().Substring(0, 8);
-            
-            GameSession.dbActiva = Application.isEditor ? $"ML_Save_EDITOR_{idInstancia}.db" : $"ML_Save_{idInstancia}.db";
-            GameSession.nombrePartidaActiva = "ML_PlayerBot_Simulation";
-            
-            Debug.Log($"<color=magenta>[ML-CORE]</color> Instancia iniciada. BD asignada: {GameSession.dbActiva}. Límite: {limiteEjecuciones}");
+            GenerarNuevaBD();
         }
+    }
+
+    public void GenerarNuevaBD()
+    {
+        string idInstancia = Guid.NewGuid().ToString().Substring(0, 8);
+        GameSession.dbActiva = Application.isEditor ? $"ML_Save_EDITOR_{idInstancia}.db" : $"ML_Save_{idInstancia}.db";
+        GameSession.nombrePartidaActiva = "ML_PlayerBot_Simulation";
+        Debug.Log($"<color=magenta>[ML-CORE]</color> Instancia iniciada. BD asignada: {GameSession.dbActiva}. Límite: {limiteEjecuciones}");
     }
 
     void Start()
@@ -136,7 +140,8 @@ public class ML_Core : MonoBehaviour
         }
         else
         {
-            if (gameManager != null) gameManager.RecargarPartidaDesdeTimestep(1); 
+            GenerarNuevaBD();
+            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
             ResetearTimeout();
         }
     }
