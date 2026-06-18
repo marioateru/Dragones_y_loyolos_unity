@@ -104,7 +104,7 @@ public class SQLManager : MonoBehaviour
         entidad.InicializarDatosSQL(id_entidad, estadoStats.id_stats_base, estadoStats, posX, posY, maxHpLeido);
     }
 
-    public int ObtenerArquetipoDeEntidad(int id_entidad, int timestep)
+    public int ObtenerStatsDeEntidadEnTimestepT(int id_entidad, int timestep)
     {
         var vinculo = connection.Query<StatsBaseEntidadesSQL>(
             "SELECT id_stats_base FROM Stats_base_entidades WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
@@ -156,15 +156,38 @@ public class SQLManager : MonoBehaviour
         {
             foreach (var accion in colaDeAcciones)
             {
-                // Native platform feature. Use REPLACE to fix duplicate primary keys on high bot speed.
                 string queryAccion = @"INSERT OR REPLACE INTO Tiempo_acciones_entidades (timestep, subTimestep, id_entidades, id_acciones, objetivoX_1, objetivoY_1) VALUES (?, ?, ?, ?, ?, ?)";
-                connection.Execute(queryAccion, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.tipoAccion.ToString(), accion.objetivoX, accion.objetivoY);
+                connection.Execute(queryAccion, 
+                    accion.timestep, 
+                    accion.subTimestep, 
+                    accion.entidad.id_entidades, 
+                    accion.tipoAccion.ToString(), 
+                    accion.objetivoX, 
+                    accion.objetivoY);
                 
                 string queryPos = @"INSERT OR REPLACE INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
-                connection.Execute(queryPos, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, idSalaActual, Mathf.RoundToInt(accion.entidad.xPos), Mathf.RoundToInt(accion.entidad.yPos));
+                connection.Execute(queryPos, 
+                    accion.timestep, 
+                    accion.subTimestep, 
+                    accion.entidad.id_entidades, 
+                    idSalaActual, 
+                    Mathf.RoundToInt(accion.entidad.xPos), 
+                    Mathf.RoundToInt(accion.entidad.yPos));
 
                 string queryStats = @"INSERT OR REPLACE INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-                connection.Execute(queryStats, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.entidad.id_stats_base, accion.entidad.hp, accion.entidad.ac, accion.entidad.fuerza, accion.entidad.destreza, accion.entidad.constitucion, accion.entidad.inteligencia, accion.entidad.sabiduria, accion.entidad.carisma);
+                connection.Execute(queryStats, 
+                    accion.timestep, 
+                    accion.subTimestep, 
+                    accion.entidad.id_entidades, 
+                    accion.entidad.id_stats_base, 
+                    accion.entidad.hp, 
+                    accion.entidad.ac, 
+                    accion.entidad.fuerza, 
+                    accion.entidad.destreza, 
+                    accion.entidad.constitucion,
+                    accion.entidad.inteligencia, 
+                    accion.entidad.sabiduria, 
+                    accion.entidad.carisma);
             }
             connection.Commit();
         }

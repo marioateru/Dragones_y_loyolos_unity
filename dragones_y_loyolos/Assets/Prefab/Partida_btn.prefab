@@ -37,7 +37,7 @@ RectTransform:
   m_AnchorMin: {x: 1, y: 0.5}
   m_AnchorMax: {x: 1, y: 0.5}
   m_AnchoredPosition: {x: 73.6, y: -0.00012207}
-  m_SizeDelta: {x: 56.459106, y: 47.912}
+  m_SizeDelta: {x: 63.405, y: 60.549}
   m_Pivot: {x: 1, y: 0.5}
 --- !u!222 &5963265706458108957
 CanvasRenderer:
@@ -295,8 +295,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 0, y: 0}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 783.3617, y: 47.9122}
+  m_AnchoredPosition: {x: 11.6599, y: 0}
+  m_SizeDelta: {x: 806.6815, y: 60.5489}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!222 &6826586736846524429
 CanvasRenderer:
@@ -445,7 +445,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Partida - 05/06/2026
+  m_text: Partida - dd/MM/yyyy - HH:mm:ss
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 3901199aacf0941b79577f8c6bb00284, type: 2}
   m_sharedMaterial: {fileID: -5521646306328419950, guid: 3901199aacf0941b79577f8c6bb00284, type: 2}
@@ -480,7 +480,7 @@ MonoBehaviour:
   m_fontSizeMax: 72
   m_fontStyle: 0
   m_HorizontalAlignment: 1
-  m_VerticalAlignment: 512
+  m_VerticalAlignment: 4096
   m_textAlignment: 65535
   m_characterSpacing: 0
   m_characterHorizontalScale: 1
@@ -491,7 +491,7 @@ MonoBehaviour:
   m_charWidthMaxAdj: 0
   m_TextWrappingMode: 1
   m_wordWrappingRatios: 0.4
-  m_overflowMode: 0
+  m_overflowMode: 3
   m_linkedTextComponent: {fileID: 0}
   parentLinkedComponent: {fileID: 0}
   m_enableKerning: 0

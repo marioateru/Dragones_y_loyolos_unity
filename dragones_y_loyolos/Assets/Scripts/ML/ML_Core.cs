@@ -11,11 +11,11 @@ public class ML_Core : MonoBehaviour
 
     [Header("Forzar ML en Editor")]
     [Tooltip("Marcar para forzar el modo ML a correr en el editor")]
-    public bool forzarModoML_EnEditor = false; 
+    public bool forzarModoMLEnEditor = false; 
 
     [Header("Velocidad de Simulación")]
-    [Tooltip("Controla la velocidad de la simulación en operaciones por segundo. -1 = todo lo rápido que dé el procesador.")]
-    public float operacionesPorSegundo = -1f;
+    [Tooltip("Controla la velocidad de la simulación en transacciones por segundo. -1 = todo lo rápido que dé el procesador.")]
+    public float maximoOperacionesPorSegundo = -1f;
     [HideInInspector] public float acumuladorOperaciones = 0f;
 
     [Header("Configuración modo ML")]
@@ -48,7 +48,7 @@ public class ML_Core : MonoBehaviour
 
     private void ComprobarArgumentosConsola()
     {
-        if (Application.isEditor && forzarModoML_EnEditor)
+        if (Application.isEditor && forzarModoMLEnEditor)
         {
             IsMLMode = true;
         }
@@ -93,14 +93,8 @@ public class ML_Core : MonoBehaviour
 
         if (Time.realtimeSinceStartup - tiempoUltimoEnemigo > TIMEOUT_SEGUNDOS)
         {
-            Debug.LogWarning($"[ML-CORE] TIMEOUT: {TIMEOUT_SEGUNDOS/60} minutos sin actividad hostil. Guardando y abortando instancia.");
-            gameManager.GuardarPartidaEnDisco();
-            
-            #if UNITY_EDITOR
-                UnityEditor.EditorApplication.isPlaying = false;
-            #else
-                Application.Quit();
-            #endif
+            Debug.LogWarning($"[ML-CORE] TIMEOUT: {TIMEOUT_SEGUNDOS/60} minutos sin actividad hostil. Guardando y comenzando de nuevo.");
+            GestionarMuerteBot();
         }
     }
 

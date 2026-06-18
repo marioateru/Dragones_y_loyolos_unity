@@ -50,7 +50,6 @@ public class MainMenuController : MonoBehaviour
         string nombreFisicoBD = "";
         string nombre = "";
 
-        // ¡EL FIX!: Separamos la lógica si es jugador o es la IA
         if (!ML_Core.IsMLMode)
         {
             nombre = inputNombrePartida.text;
@@ -103,7 +102,7 @@ public class MainMenuController : MonoBehaviour
 
             GameObject btnObjeto = Instantiate(prefabBotonPartida, contenedorPartidas);
             
-            string textoFinal = $"{nombreMostrar}\n<size=12>{fechaGuardado}</size>";
+            string textoFinal = $"{nombreMostrar} -- <size=36>{fechaGuardado}</size>";
             var textoLegacy = btnObjeto.GetComponentInChildren<Text>();
             if (textoLegacy != null) 
             {

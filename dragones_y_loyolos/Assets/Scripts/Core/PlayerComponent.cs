@@ -16,7 +16,7 @@ public class PlayerComponent : Entidad
     private PuertaMazmorra puertaObjetivo = null;
     private Entidad enemigoObjetivo = null;
 
-    // A* Star & Pathing RAM
+    // A* Star
     private List<Vector2Int> openList = new List<Vector2Int>(5000);
     private HashSet<Vector2Int> closedList = new HashSet<Vector2Int>(5000);
     private Dictionary<Vector2Int, Vector2Int> cameFrom = new Dictionary<Vector2Int, Vector2Int>(5000);
@@ -186,10 +186,9 @@ public class PlayerComponent : Entidad
         puertaObjetivo = null;
         ML_Core.Instancia?.RegistrarContactoEnemigo();
 
-        // Escenario: Modo Retirada Activo (buscando sanar)
         if (modoRetirada)
         {
-            if (enemigosCercanos == 0) // Zona segura
+            if (enemigosCercanos == 0)
             {
                 debugRutaActual.Clear();
                 ML_Core.Instancia?.RegistrarOperacionIA();
@@ -197,7 +196,6 @@ public class PlayerComponent : Entidad
                 return;
             }
 
-            // Enemigo cerca, buscar escape
             Vector2Int escape = CalcularCasillaHuida(miX, miY, enemigoPelear); 
             List<Vector2Int> ruta = CalcularRutaAStar(miX, miY, escape.x, escape.y);
             ML_Core.Instancia?.RegistrarOperacionIA();
@@ -205,7 +203,6 @@ public class PlayerComponent : Entidad
             return;
         }
 
-        // Escenario: Pelea normal
         int enX = Mathf.RoundToInt(enemigoPelear.xPos);
         int enY = Mathf.RoundToInt(enemigoPelear.yPos);
         int distancia = Mathf.Max(Mathf.Abs(miX - enX), Mathf.Abs(miY - enY));
@@ -312,7 +309,7 @@ public class PlayerComponent : Entidad
         return mejorObjetivo;
     }
 
-    private PuertaMazmorra SeleccionarMejorPuerta(int miX, int miY)
+    private PuertaMazmorra SeleccionarMejorPuerta(int miCoordX, int miCoordY)
     {
         if (puertaObjetivo != null && gameManager.salaActual.ObtenerTodasLasPuertas().Contains(puertaObjetivo))
         {
@@ -322,21 +319,21 @@ public class PlayerComponent : Entidad
             }
         }
 
-        List<PuertaMazmorra> todas = gameManager.salaActual.ObtenerTodasLasPuertas();
-        if (todas.Count == 0) return null;
+        List<PuertaMazmorra> todasPuertas = gameManager.salaActual.ObtenerTodasLasPuertas();
+        if (todasPuertas.Count == 0) return null;
 
         PuertaMazmorra puertaInexplorada = null;
         float mejorDist = float.MaxValue;
 
-        foreach (var p in todas)
+        foreach (var puerta in todasPuertas)
         {
-            if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(p.idSalaDestino))
+            if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(puerta.idSalaDestino))
             {
-                float dist = Mathf.Max(Mathf.Abs(miX - p.logicX), Mathf.Abs(miY - p.logicY));
+                float dist = Mathf.Max(Mathf.Abs(miCoordX - puerta.logicX), Mathf.Abs(miCoordY - puerta.logicY));
                 if (dist < mejorDist)
                 {
                     mejorDist = dist;
-                    puertaInexplorada = p;
+                    puertaInexplorada = puerta;
                 }
             }
         }

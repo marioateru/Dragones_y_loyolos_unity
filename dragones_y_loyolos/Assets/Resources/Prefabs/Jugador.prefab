@@ -64,7 +64,7 @@ MonoBehaviour:
   sqlManager: {fileID: 0}
   pasosSinEnemigo: 0
   porcentajeVidaBaja: 0.45
-  areaCasillasDeHuidaBFS: 40
+  areaCasillasDeHuidaBFS: 42
 --- !u!114 &6374172565021501632
 MonoBehaviour:
   m_ObjectHideFlags: 0

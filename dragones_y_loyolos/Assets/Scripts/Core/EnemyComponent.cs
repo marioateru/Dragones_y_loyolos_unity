@@ -16,7 +16,7 @@ public class EnemyComponent : Entidad
     
     private int vidaMaxima = -1;
 
-    // A* RAM 
+    // A*  
     private List<Vector2Int> openList = new List<Vector2Int>(5000);
     private HashSet<Vector2Int> closedList = new HashSet<Vector2Int>(5000);
     private Dictionary<Vector2Int, Vector2Int> cameFrom = new Dictionary<Vector2Int, Vector2Int>(5000);

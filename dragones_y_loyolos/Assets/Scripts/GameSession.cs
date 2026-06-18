@@ -1,11 +1,15 @@
 using UnityEngine;
 
+/// <summary>
+/// Almacena los datos de la sesión de juego.
+/// Mantiene un registro de la base de datos de la partida activa y el último timestep.
+/// </summary>
 public static class GameSession
 {
-    // Nombre del archivo físico (ej: "save_12345.db")
+    // Nombre de la bd activa.
     public static string dbActiva = ""; 
     
-    // Nombre para mostrar en UI (ej: "D&L 12/05/2026")
+    // Nombre de la bd en UI.
     public static string nombrePartidaActiva = ""; 
 
     public static int UltimoGuardadoManualTimestep

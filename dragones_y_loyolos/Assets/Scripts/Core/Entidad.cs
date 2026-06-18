@@ -90,7 +90,7 @@ public abstract class Entidad : MonoBehaviour
                     int d20 = DnD_Rules.LanzarD20(tieneVentaja: false, tieneDesventaja: desventaja);
                     int tiradaAtaque = d20 + fuerza;
 
-                    // FIXME: esta regla de cuando sacas 20 aciertas es un poco random, puede putear al jugador.
+                    // FIXME: esta regla de cuando sacas 20 aciertas es un poco random, puede fastidiar al jugador.
                     bool hit = (d20 == 20) || (tiradaAtaque >= objetivoAtaque.ac);
                     
                     Debug.Log($"<color=orange>[Combate]</color> {gameObject.name} ataca a {objetivoAtaque.gameObject.name}. Tirada: {d20} + {fuerza} = {tiradaAtaque} vs AC {objetivoAtaque.ac}. ¿Impacta?: {hit}");
@@ -128,6 +128,9 @@ public abstract class Entidad : MonoBehaviour
         }
     }
 
+    // Muy redundante! Podemos procesarlo desde EjecutarAcción!
+    // Se ideó para que la entidad de forma privada cambiara su estado, pero eso ya lo hace en EjecutarAcción.
+    // Gajes del programador junior...
     public virtual void RecibirInteraccion(Entidad origen, Acciones tipoInteraccion, int valorData = 0)
     {
         switch (tipoInteraccion)

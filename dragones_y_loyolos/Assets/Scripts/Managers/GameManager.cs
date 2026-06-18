@@ -116,13 +116,13 @@ public class GameManager : MonoBehaviour
 
         if (ML_Core.IsMLMode && ML_Core.Instancia != null)
         {
-            if (ML_Core.Instancia.operacionesPorSegundo <= 0)
+            if (ML_Core.Instancia.maximoOperacionesPorSegundo <= 0)
             {
                 limiteBucles = 5000000;
             }
             else
             {
-                ML_Core.Instancia.acumuladorOperaciones += ML_Core.Instancia.operacionesPorSegundo * Time.deltaTime;
+                ML_Core.Instancia.acumuladorOperaciones += ML_Core.Instancia.maximoOperacionesPorSegundo * Time.deltaTime;
                 limiteBucles = Mathf.FloorToInt(ML_Core.Instancia.acumuladorOperaciones);
                 ML_Core.Instancia.acumuladorOperaciones -= limiteBucles;
             }
@@ -184,7 +184,7 @@ public class GameManager : MonoBehaviour
             sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
             nuevoObj.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
 
-            ComponenteVisual visuales = nuevoObj.GetComponent<ComponenteVisual>();
+            ComponenteVisual visuales = nuevoObj.GetComponentInChildren<ComponenteVisual>();
             if (visuales != null)
             {
                 string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
