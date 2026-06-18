@@ -15,7 +15,7 @@ public class SQLManager : MonoBehaviour
     {
         if (string.IsNullOrEmpty(GameSession.dbActiva)) GameSession.dbActiva = "Partida_Test_Debug.db";
 
-        string dbPath = string.Format("{0}/{1}", Application.streamingAssetsPath, "dragones_y_loyolos.db"); // Tu plantilla original
+        string dbPath = string.Format("{0}/{1}", Application.streamingAssetsPath, "dragones_y_loyolos.db"); 
         string filepath = string.Format("{0}/{1}", Application.persistentDataPath, GameSession.dbActiva);
         
         #if UNITY_EDITOR
@@ -35,7 +35,6 @@ public class SQLManager : MonoBehaviour
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_tiempo ON Entidades_sala_proposito_contenido (id_entidades, timestep, subTimestep);");
     }
 
-    // Para evitar que se corrompan datos al cerrar el juego.
     void OnDestroy()
     {
         if (connection != null)
@@ -97,7 +96,6 @@ public class SQLManager : MonoBehaviour
         int posX = posBD != null ? posBD.Xpos : 0;
         int posY = posBD != null ? posBD.Ypos : 0;
 
-        // Leer HP real de T=0 para pasarlo a C#
         var statsT0 = connection.Query<StatsBaseEntidadesSQL>(
             "SELECT hp FROM Stats_base_entidades WHERE id_entidades = ? AND timestep = 0 LIMIT 1", id_entidad).FirstOrDefault();
         
@@ -158,13 +156,14 @@ public class SQLManager : MonoBehaviour
         {
             foreach (var accion in colaDeAcciones)
             {
-                string queryAccion = @"INSERT INTO Tiempo_acciones_entidades (timestep, subTimestep, id_entidades, id_acciones, objetivoX_1, objetivoY_1) VALUES (?, ?, ?, ?, ?, ?)";
+                // Native platform feature. Use REPLACE to fix duplicate primary keys on high bot speed.
+                string queryAccion = @"INSERT OR REPLACE INTO Tiempo_acciones_entidades (timestep, subTimestep, id_entidades, id_acciones, objetivoX_1, objetivoY_1) VALUES (?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryAccion, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.tipoAccion.ToString(), accion.objetivoX, accion.objetivoY);
                 
-                string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
+                string queryPos = @"INSERT OR REPLACE INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryPos, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, idSalaActual, Mathf.RoundToInt(accion.entidad.xPos), Mathf.RoundToInt(accion.entidad.yPos));
 
-                string queryStats = @"INSERT INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                string queryStats = @"INSERT OR REPLACE INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryStats, accion.timestep, accion.subTimestep, accion.entidad.id_entidades, accion.entidad.id_stats_base, accion.entidad.hp, accion.entidad.ac, accion.entidad.fuerza, accion.entidad.destreza, accion.entidad.constitucion, accion.entidad.inteligencia, accion.entidad.sabiduria, accion.entidad.carisma);
             }
             connection.Commit();
@@ -178,7 +177,7 @@ public class SQLManager : MonoBehaviour
 
     public void MoverEntidadASala(int id_entidad, int id_sala, int destX, int destY, int timestep)
     {
-        string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
+        string queryPos = @"INSERT OR REPLACE INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
         connection.Execute(queryPos, timestep, 0, id_entidad, id_sala, destX, destY);
     }
 
@@ -191,10 +190,10 @@ public class SQLManager : MonoBehaviour
             {
                 if (EsJugador(entidad.id_entidades)) continue;
 
-                string queryPos = @"INSERT INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
+                string queryPos = @"INSERT OR REPLACE INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryPos, timestep, 0, entidad.id_entidades, idSala, Mathf.RoundToInt(entidad.xPos), Mathf.RoundToInt(entidad.yPos));
 
-                string queryStats = @"INSERT INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                string queryStats = @"INSERT OR REPLACE INTO Stats_base_entidades (timestep, subTimestep, id_entidades, id_stats_base, hp, ac, fuerza, destreza, constitucion, inteligencia, sabiduria, carisma) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
                 connection.Execute(queryStats, timestep, 0, entidad.id_entidades, entidad.id_stats_base, entidad.hp, entidad.ac, entidad.fuerza, entidad.destreza, entidad.constitucion, entidad.inteligencia, entidad.sabiduria, entidad.carisma);
             }
             connection.Commit();
@@ -209,6 +208,7 @@ public class SQLManager : MonoBehaviour
     public List<Acciones> ObtenerAccionesPermitidas(int idEntidad)
     {
         List<Acciones> acciones = new List<Acciones>();
+        
         string query = "SELECT id_acciones FROM Acciones_entidades WHERE id_entidades = ?";
         
         try
@@ -233,26 +233,11 @@ public class SQLManager : MonoBehaviour
             Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {e.Message}");
         }
 
-        // Fix missing player actions at DB start
         if (acciones.Count == 0)
         {
             acciones.Add(Acciones.Moverse);
             acciones.Add(Acciones.Atacar);
             acciones.Add(Acciones.Defender);
-            
-            if (idEntidad == 1) 
-            {
-                try 
-                {
-                    connection.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, 'Moverse')");
-                    connection.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, 'Atacar')");
-                    connection.Execute("INSERT INTO Acciones_entidades (timestep, subTimestep, id_entidades, id_acciones) VALUES (0, 0, 1, 'Defender')");
-                } 
-                catch (System.Exception exception)
-                {
-                    Debug.Log(exception);
-                }
-            }
         }
 
         return acciones;
@@ -262,7 +247,6 @@ public class SQLManager : MonoBehaviour
     {
         try 
         {
-            // Buscamos el HP que tenía la entidad en el momento exacto de su creación (el timestep más antiguo)
             var registro = connection.Query<StatsBaseEntidadesSQL>(
                 "SELECT hp FROM Stats_base_entidades WHERE id_entidades = ? ORDER BY timestep ASC, subTimestep ASC LIMIT 1", 
                 id_entidad).FirstOrDefault();
@@ -284,7 +268,6 @@ public class SQLManager : MonoBehaviour
         connection.Execute("DELETE FROM Stats_base_entidades WHERE timestep > ?", targetTimestep);
     }
 
-    // Busca automáticamente el último turno en el que el jugador estaba vivo
     public int ObtenerUltimoTimestepConVida()
     {
         var jugador = connection.Query<JugadoresSQL>("SELECT id_entidades FROM Jugadores LIMIT 1").FirstOrDefault();

@@ -125,19 +125,16 @@ public class PlayerComponent : Entidad
             ML_Core.Instancia.salasVisitadas.Add(gameManager.salaActual.idSalaActual);
         }
 
-        // 1. OMNISCIENCIA: Escanea la sala entera al instante
         int enemigosCercanos;
         Entidad enemigoPelear = EscanearMejorEnemigoGlobal(miX, miY, out enemigosCercanos); 
 
-        // Si NO hay enemigos en toda la sala...
         if (enemigoPelear == null)
         {
-            enemigoObjetivo = null; // Soltamos lock de enemigo
+            enemigoObjetivo = null;
 
             PuertaMazmorra puertaDestino = SeleccionarMejorPuerta(miX, miY);
             if (puertaDestino != null)
             {
-                // Todavía quedan salas por limpiar, vamos a la puerta
                 int pX = puertaDestino.logicX;
                 int pY = puertaDestino.logicY;
                 
@@ -145,7 +142,7 @@ public class PlayerComponent : Entidad
                 {
                     ML_Core.Instancia?.RegistrarOperacionIA();
                     SubmitAction(Acciones.Moverse, pX, pY);
-                    puertaObjetivo = null; // Reseteamos al cruzar
+                    puertaObjetivo = null;
                     return;
                 }
                 
@@ -158,8 +155,6 @@ public class PlayerComponent : Entidad
             }
             else
             {
-                // ¡CONDICIÓN DE ÉXITO ABSOLUTO O CALLEJÓN SIN SALIDA! 
-                // Sin enemigos y sin puertas nuevas -> La simulación debe terminar este episodio.
                 Debug.Log("<color=green><b>[ML-BOT] ¡MAZMORRA LIMPIADA / CALLEJON!</b> Reiniciando simulación.</color>");
                 if (ML_Core.Instancia != null) ML_Core.Instancia.GestionarMuerteBot(); 
                 else SubmitAction(Acciones.Moverse, miX, miY); 
@@ -167,14 +162,12 @@ public class PlayerComponent : Entidad
             }
         }
 
-        // 2. A PARTIR DE AQUÍ: HAY ENEMIGOS EN LA SALA
         pasosSinEnemigo = 0; 
-        puertaObjetivo = null; // Si hay combate, nos olvidamos de la puerta temporalmente
+        puertaObjetivo = null;
         ML_Core.Instancia?.RegistrarContactoEnemigo();
 
         int vidaMax = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades); 
         
-        // MODO SUPERVIVENCIA
         if (hp <= vidaMax * porcentajeVidaBaja)
         {
             if (enemigosCercanos == 0 && hp < vidaMax)
@@ -190,7 +183,6 @@ public class PlayerComponent : Entidad
             return;
         }
 
-        // 3. COMBATE TÁCTICO
         int enX = Mathf.RoundToInt(enemigoPelear.xPos);
         int enY = Mathf.RoundToInt(enemigoPelear.yPos);
         int distancia = Mathf.Max(Mathf.Abs(miX - enX), Mathf.Abs(miY - enY));
@@ -252,7 +244,6 @@ public class PlayerComponent : Entidad
             }
         }
 
-        // TARGET LOCK: Mantenemos el mismo objetivo a menos que muera
         if (enemigoObjetivo != null && !enemigoObjetivo.IsDead() && gameManager.ObtenerTodasLasEntidades().Contains(enemigoObjetivo))
         {
             return enemigoObjetivo;
@@ -264,7 +255,6 @@ public class PlayerComponent : Entidad
 
     private PuertaMazmorra SeleccionarMejorPuerta(int miX, int miY)
     {
-        // TARGET LOCK: Si ya apuntamos a una puerta y es válida (no visitada), seguimos yendo allí sin cambiar de opinión
         if (puertaObjetivo != null && gameManager.salaActual.ObtenerTodasLasPuertas().Contains(puertaObjetivo))
         {
             if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(puertaObjetivo.idSalaDestino))
@@ -327,7 +317,6 @@ public class PlayerComponent : Entidad
         return mejor;
     }
 
-    // REEMPLAZO DEL BFS POR A* (Más robusto para esquinas, no se queda atascado)
     private Vector2Int CalcularSiguientePasoAStar(int startX, int startY, int targetX, int targetY)
     {
         Vector2Int start = new Vector2Int(startX, startY);
@@ -385,7 +374,6 @@ public class PlayerComponent : Entidad
                     Vector2Int neighbor = new Vector2Int(current.x + x, current.y + y);
                     if (closedList.Contains(neighbor)) continue;
 
-                    // CHEQUEO DE ESQUINAS: Evita que intente caminar a través de bordes sólidos en diagonal
                     if (Mathf.Abs(x) == 1 && Mathf.Abs(y) == 1)
                     {
                         if (collisionChecker.HayMuroEnRuta(current.x, current.y, current.x + x, current.y) || 
@@ -393,15 +381,12 @@ public class PlayerComponent : Entidad
                             continue;
                     }
 
-                    // CHEQUEO DE MUROS
                     bool isWall = collisionChecker.HayMuroEnRuta(current.x, current.y, neighbor.x, neighbor.y);
                     bool isDoor = gameManager.salaActual != null && gameManager.salaActual.ObtenerPuerta(neighbor.x, neighbor.y) != null;
                     if (isWall && !isDoor) continue;
 
                     int moveCost = 10;
                     
-                    // Si hay un enemigo bloqueando, suma costo pero permite que el pathfinding cruce por ahí 
-                    // (lo atacará al intentar pisar gracias a EjecutarPaso)
                     if (gameManager.ObtenerEntidadEnCasilla(neighbor.x, neighbor.y) != null && neighbor != target)
                     {
                         moveCost += 100; 
