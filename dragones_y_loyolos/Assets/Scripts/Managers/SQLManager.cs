@@ -70,9 +70,9 @@ public class SQLManager : MonoBehaviour
                 }
             }
         }
-        catch (System.Exception e)
+        catch (System.Exception exception)
         {
-            Debug.LogWarning("[SQLManager] No se pudo obtener la sala del jugador en el timestep. Se usará la por defecto. Error: " + e.Message);
+            Debug.LogWarning("[SQLManager] No se pudo obtener la sala del jugador en el timestep. Se usará la por defecto. Error: " + exception.Message);
         }
         
         return salaPorDefecto;
@@ -191,10 +191,10 @@ public class SQLManager : MonoBehaviour
             }
             connection.Commit();
         }
-        catch (System.Exception e)
+        catch (System.Exception exception)
         {
             connection.Rollback();
-            Debug.LogError("[SQLManager] Error al guardar los datos: " + e.Message);
+            Debug.LogError("[SQLManager] Error al guardar los datos: " + exception.Message);
         }
     }
 
@@ -221,10 +221,10 @@ public class SQLManager : MonoBehaviour
             }
             connection.Commit();
         }
-        catch (System.Exception e)
+        catch (System.Exception exception)
         {
             connection.Rollback();
-            Debug.LogError("[SQLManager] Error al congelar el estado de la mazmorra: " + e.Message);
+            Debug.LogError("[SQLManager] Error al congelar el estado de la mazmorra: " + exception.Message);
         }
     }
 
@@ -251,9 +251,9 @@ public class SQLManager : MonoBehaviour
                 }
             }
         }
-        catch (System.Exception e)
+        catch (System.Exception exception)
         {
-            Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {e.Message}");
+            Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {exception.Message}");
         }
 
         if (acciones.Count == 0)
@@ -276,9 +276,9 @@ public class SQLManager : MonoBehaviour
                 
             if (registro != null) return registro.hp;
         }
-        catch (System.Exception e)
+        catch (System.Exception exception)
         {
-            Debug.LogError($"[SQLManager] Error al obtener la vida máxima de la entidad {id_entidad}: {e.Message}");
+            Debug.LogError($"[SQLManager] Error al obtener la vida máxima de la entidad {id_entidad}: {exception.Message}");
         }
         
         return 10;

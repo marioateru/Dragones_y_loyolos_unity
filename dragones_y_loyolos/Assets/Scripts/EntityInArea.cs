@@ -2,6 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// Comprueba si hay diferentes entidades en área
+/// WARNING: este script está obsoleto y en desuso
 /// </summary>
 public class EnemyInArea : MonoBehaviour
 {

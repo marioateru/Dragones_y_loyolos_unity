@@ -61,16 +61,16 @@ public class InGameUIController : MonoBehaviour
 
     public void CargarUltimoMomentoConVida()
     {
-        int timestepVivo = sqlManager.ObtenerUltimoTimestepConVida();
+        int ultimoTimestepVivo = sqlManager.ObtenerUltimoTimestepConVida();
         OcultarYReanudar();
-        gameManager.RecargarPartidaDesdeTimestep(timestepVivo);
+        gameManager.RecargarPartidaDesdeTimestep(ultimoTimestepVivo);
     }
 
     public void CargarUltimoGuardadoManual()
     {
-        int timestepManual = GameSession.UltimoGuardadoManualTimestep;
+        int timestepGuardadoManual = GameSession.UltimoGuardadoManualTimestep;
         OcultarYReanudar();
-        gameManager.RecargarPartidaDesdeTimestep(timestepManual);
+        gameManager.RecargarPartidaDesdeTimestep(timestepGuardadoManual);
     }
 
     public void IrAMenuPrincipal()

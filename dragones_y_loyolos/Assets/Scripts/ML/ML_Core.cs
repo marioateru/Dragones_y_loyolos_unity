@@ -46,6 +46,7 @@ public class ML_Core : MonoBehaviour
         }
     }
 
+    // Permite asignar valores al por terminal
     private void ComprobarArgumentosConsola()
     {
         if (Application.isEditor && forzarModoMLEnEditor)
@@ -114,6 +115,7 @@ public class ML_Core : MonoBehaviour
         tiempoUltimoEnemigo = Time.realtimeSinceStartup;
     }
 
+    // Controla las ejecuciones y la condición de parada por límite de ejecuciones.
     public void GestionarMuerteBot()
     {
         salasVisitadas.Clear();
@@ -142,11 +144,12 @@ public class ML_Core : MonoBehaviour
 
     public void ResetearTimeout() => tiempoUltimoEnemigo = Time.realtimeSinceStartup;
 
+    // Guarda antes de salir. No funciona si se fuerza a la aplicación a cerrar.
     private bool FlushSeguridadAlCerrar()
     {
         if (gameManager != null)
         {
-            Debug.Log("[ML-CORE] Comando STOP recibido. Volcando memoria RAM al SQL antes de morir...");
+            Debug.Log("[ML-CORE] Parada detectada. Volcando al SQL antes de finalizar.");
             gameManager.GuardarPartidaEnDisco();
         }
         return true; 

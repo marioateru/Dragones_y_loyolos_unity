@@ -1,10 +1,9 @@
 using UnityEngine;
 
-[RequireComponent(typeof(Animator))]
 public class ComponenteVisual : MonoBehaviour
 {
     private Animator animator;
-
+    
     private void Awake()
     {
         animator = GetComponent<Animator>();
@@ -14,14 +13,19 @@ public class ComponenteVisual : MonoBehaviour
     {
         if (animator == null) return;
 
+        // Se carga el animator con el nombre indicado
         AnimatorOverrideController overrideController = Resources.Load<AnimatorOverrideController>($"Animaciones/{nombreVisual}");
         
         if (overrideController != null)
         {
+            // Sustitución animator 
             animator.runtimeAnimatorController = overrideController;
+            
+            // Recarga del animator
             animator.Rebind();
             animator.Update(0f);
-            Debug.Log($"[Visuales] Aspecto de '{nombreVisual}' cargadas con éxito en {gameObject.name}.");
+
+            Debug.Log($"[Visuales] Aspecto de '{nombreVisual}' cargadas en {gameObject.name}.");
         }
         else
         {
@@ -29,6 +33,7 @@ public class ComponenteVisual : MonoBehaviour
             
             AnimatorOverrideController errorController = Resources.Load<AnimatorOverrideController>("Animaciones/Error_Override");
             
+            // Caso en el que no se encuentre el nombre de la entidad de juego en el SQL.
             if (errorController != null)
             {
                 animator.runtimeAnimatorController = errorController;

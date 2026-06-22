@@ -5,6 +5,8 @@ using System.Collections.Generic;
 
 public class PlayerInputController : MonoBehaviour
 {
+
+    private const float ENTITY_CENTER_OFFSET = 0.5f;
     [HideInInspector] public PlayerComponent jugador; 
     public GridInteractionUI uiInteractiva;
 
@@ -17,7 +19,7 @@ public class PlayerInputController : MonoBehaviour
 
     void Update()
     {
-        // Cosa gorrina para que no entre la interacción cuando el juego se pausa.
+        // No debe entrar la interacción si el juego se pausa.
         if (Time.timeScale == 0f) return;
 
         if (jugador == null || !jugador.EsSuTurno()) return;
@@ -27,16 +29,16 @@ public class PlayerInputController : MonoBehaviour
         {
             if (uiInteractiva != null) uiInteractiva.OcultarTodo();
 
-            int dx = 0, dy = 0;
-            if (keyboard.wKey.wasPressedThisFrame) dy = -1;
-            else if (keyboard.sKey.wasPressedThisFrame) dy = 1;
-            else if (keyboard.aKey.wasPressedThisFrame) dx = -1;
-            else if (keyboard.dKey.wasPressedThisFrame) dx = 1;
+            int distX = 0, distY = 0;
+            if (keyboard.wKey.wasPressedThisFrame) distY = -1;
+            else if (keyboard.sKey.wasPressedThisFrame) distY = 1;
+            else if (keyboard.aKey.wasPressedThisFrame) distX = -1;
+            else if (keyboard.dKey.wasPressedThisFrame) distX = 1;
 
-            if (dx != 0 || dy != 0)
+            if (distX != 0 || distY != 0)
             {
-                int tecladoX = Mathf.RoundToInt(jugador.xPos) + dx;
-                int tecladoY = Mathf.RoundToInt(jugador.yPos) + dy;
+                int tecladoX = Mathf.RoundToInt(jugador.xPos) + distX;
+                int tecladoY = Mathf.RoundToInt(jugador.yPos) + distY;
 
                 if (jugador.ValidarIntencion(Acciones.Moverse, tecladoX, tecladoY))
                 {
@@ -63,30 +65,31 @@ public class PlayerInputController : MonoBehaviour
         if (mouse.leftButton.wasPressedThisFrame)
         {
             uiInteractiva.OcultarTodo(); 
-            bool esValido = jugador.ValidarIntencion(Acciones.Moverse, objetivoX, objetivoY);
-            uiInteractiva.ActivarSeleccionIzquierda(objetivoX, objetivoY, !esValido);
+            bool esAccionValida = jugador.ValidarIntencion(Acciones.Moverse, objetivoX, objetivoY);
+            uiInteractiva.ActivarSeleccionIzquierda(objetivoX, objetivoY, !esAccionValida);
         }
 
         if (mouse.rightButton.wasPressedThisFrame)
         {
             uiInteractiva.OcultarTodo();
             
-            Vector2 origenVisual = new Vector2(jugador.xPos + 0.5f, -jugador.yPos - 0.5f);
-            List<Acciones> opciones = jugador.DeterminarOpcionesCasilla(objetivoX, objetivoY);
+            Vector2 origenVisual = new Vector2(jugador.xPos + ENTITY_CENTER_OFFSET, -jugador.yPos - ENTITY_CENTER_OFFSET);
+            List<Acciones> opcionesAMostrar = jugador.DeterminarOpcionesCasilla(objetivoX, objetivoY);
             
-            if (opciones.Count > 0)
+            if (opcionesAMostrar.Count > 0)
             {
                 bool rangoInvalido = true;
-                foreach (var acc in opciones)
+                
+                foreach (var accion in opcionesAMostrar)
                 {
-                    if (jugador.ValidarIntencion(acc, objetivoX, objetivoY)) 
+                    if (jugador.ValidarIntencion(accion, objetivoX, objetivoY)) 
                     {
                         rangoInvalido = false;
                         break;
                     }
                 }
 
-                uiInteractiva.ActivarMenuDerecho(objetivoX, objetivoY, origenVisual, opciones, rangoInvalido, (accionElegida) => {
+                uiInteractiva.ActivarMenuDerecho(objetivoX, objetivoY, origenVisual, opcionesAMostrar, rangoInvalido, (accionElegida) => {
                     if (jugador.ValidarIntencion(accionElegida, objetivoX, objetivoY))
                     {
                         uiInteractiva.OcultarTodo();

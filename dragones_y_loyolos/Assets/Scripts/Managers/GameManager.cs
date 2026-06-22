@@ -211,19 +211,19 @@ public class GameManager : MonoBehaviour
     private void PrepararColas()
     {
         entityQueue.Clear();
-        int pX = 0, pY = 0;
+        int playerXPos = 0, playerYPos = 0;
 
         if (jugadorPrincipal != null)
         {
-            pX = Mathf.RoundToInt(jugadorPrincipal.xPos);
-            pY = Mathf.RoundToInt(jugadorPrincipal.yPos);
+            playerXPos = Mathf.RoundToInt(jugadorPrincipal.xPos);
+            playerYPos = Mathf.RoundToInt(jugadorPrincipal.yPos);
         }
 
         foreach (Entidad entidad in entidadesEnMapa)
         {
             if (entidad is EnemyComponent)
             {
-                int distancia = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(entidad.xPos) - pX), Mathf.Abs(Mathf.RoundToInt(entidad.yPos) - pY));
+                int distancia = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(entidad.xPos) - playerXPos), Mathf.Abs(Mathf.RoundToInt(entidad.yPos) - playerYPos));
                 bool isRun = distancia <= rangoLowPriority;
                 bool isHighPriority = distancia <= rangoHighPriority;
                 
@@ -254,12 +254,12 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    public void RegistrarEleccion(Entidad actor, Acciones accion, int objX, int objY)
+    public void RegistrarEleccion(Entidad actor, Acciones accion, int objXPos, int objYPos)
     {
         actionQueue.Add(new AccionEnMemoria
         {
             timestep = timestepActual, subTimestep = 0, entidad = actor, tipoAccion = accion,
-            objetivoX = objX, objetivoY = objY, prioridad = actor.destreza 
+            objetivoX = objXPos, objetivoY = objYPos, prioridad = actor.destreza 
         });
 
         indiceEntidadPensando++;
@@ -268,7 +268,7 @@ public class GameManager : MonoBehaviour
 
     private void ProcesarAcciones()
     {
-        actionQueue.Sort((a, b) => b.prioridad.CompareTo(a.prioridad)); 
+        actionQueue.Sort((actionA, actionB) => actionB.prioridad.CompareTo(actionA.prioridad)); 
         subTimestepActual = 0;
 
         foreach (var accion in actionQueue)

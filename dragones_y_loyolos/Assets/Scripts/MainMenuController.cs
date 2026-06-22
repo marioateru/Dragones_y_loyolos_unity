@@ -18,7 +18,7 @@ public class MainMenuController : MonoBehaviour
     public GameObject prefabBotonPartida;
     
     [Tooltip("Arrastra aquí el botón de 'Cargar Partida' del panel principal para ocultarlo si no hay partidas")]
-    public Button btnAbrirMenuCargar; 
+    public Button botonAbrirMenuCargar; 
 
     private string prefijoGuardado = "Save_";
 
@@ -27,9 +27,9 @@ public class MainMenuController : MonoBehaviour
         Time.timeScale = 1; 
         
         string[] archivosBD = Directory.GetFiles(Application.persistentDataPath, prefijoGuardado + "*.db");
-        if (btnAbrirMenuCargar != null)
+        if (botonAbrirMenuCargar != null)
         {
-            btnAbrirMenuCargar.gameObject.SetActive(archivosBD.Length > 0);
+            botonAbrirMenuCargar.gameObject.SetActive(archivosBD.Length > 0);
         }
 
         if (ML_Core.IsMLMode)
@@ -47,34 +47,34 @@ public class MainMenuController : MonoBehaviour
 
     public void ConfirmarNuevaPartida()
     {
-        string nombreFisicoBD = "";
-        string nombre = "";
+        string nombreEnCarpetaBD = "";
+        string nombreEnJuego = "";
 
         if (!ML_Core.IsMLMode)
         {
-            nombre = inputNombrePartida.text;
-            if (string.IsNullOrWhiteSpace(nombre)) 
+            nombreEnJuego = inputNombrePartida.text;
+            if (string.IsNullOrWhiteSpace(nombreEnJuego)) 
             {
-                nombre = "D&L " + DateTime.Now.ToString("yyyy-MM-dd");
+                nombreEnJuego = "D&L " + DateTime.Now.ToString("yyyy-MM-dd");
             }
 
-            nombreFisicoBD = prefijoGuardado + DateTime.Now.Ticks + ".db";
+            nombreEnCarpetaBD = prefijoGuardado + DateTime.Now.Ticks + ".db";
             
-            PlayerPrefs.SetString("DisplayName_" + nombreFisicoBD, nombre);
-            PlayerPrefs.SetString("Date_" + nombreFisicoBD, DateTime.Now.ToString("dd/MM/yyyy - HH:mm:ss"));
+            PlayerPrefs.SetString("DisplayName_" + nombreEnCarpetaBD, nombreEnJuego);
+            PlayerPrefs.SetString("Date_" + nombreEnCarpetaBD, DateTime.Now.ToString("dd/MM/yyyy - HH:mm:ss"));
             PlayerPrefs.Save();
 
-            GameSession.dbActiva = nombreFisicoBD;
-            GameSession.nombrePartidaActiva = nombre;
+            GameSession.dbActiva = nombreEnCarpetaBD;
+            GameSession.nombrePartidaActiva = nombreEnJuego;
         }
         else
         {
-            nombreFisicoBD = GameSession.dbActiva;
-            nombre = GameSession.nombrePartidaActiva;
+            nombreEnCarpetaBD = GameSession.dbActiva;
+            nombreEnJuego = GameSession.nombrePartidaActiva;
         }
 
         string plantillaPath = Path.Combine(Application.streamingAssetsPath, "dragones_y_loyolos.db");
-        string nuevoPath = Path.Combine(Application.persistentDataPath, nombreFisicoBD);
+        string nuevoPath = Path.Combine(Application.persistentDataPath, nombreEnCarpetaBD);
         
         File.Copy(plantillaPath, nuevoPath, true);
         
@@ -140,7 +140,7 @@ public class MainMenuController : MonoBehaviour
                         
                         if (Directory.GetFiles(Application.persistentDataPath, prefijoGuardado + "*.db").Length == 0)
                         {
-                            if (btnAbrirMenuCargar != null) btnAbrirMenuCargar.gameObject.SetActive(false);
+                            if (botonAbrirMenuCargar != null) botonAbrirMenuCargar.gameObject.SetActive(false);
                             VolverAlMenuPrincipal();
                         }
                     });

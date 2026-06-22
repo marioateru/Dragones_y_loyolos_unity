@@ -9,40 +9,40 @@ public class ControladorSala : MonoBehaviour
 
     private Dictionary<Vector2Int, PuertaMazmorra> puertasRegistradas = new Dictionary<Vector2Int, PuertaMazmorra>();
 
-    public void RegistrarPuerta(int x, int y, PuertaMazmorra puerta)
+    public void RegistrarPuerta(int xPos, int yPos, PuertaMazmorra puerta)
     {
-        Vector2Int pos = new Vector2Int(x, y);
-        if (!puertasRegistradas.ContainsKey(pos))
+        Vector2Int posicionPuerta = new Vector2Int(xPos, yPos);
+        if (!puertasRegistradas.ContainsKey(posicionPuerta))
         {
-            puertasRegistradas.Add(pos, puerta);
+            puertasRegistradas.Add(posicionPuerta, puerta);
         }
     }
 
-    public PuertaMazmorra ObtenerPuerta(int x, int y)
+    public PuertaMazmorra ObtenerPuerta(int xPos, int yPos)
     {
-        Vector2Int pos = new Vector2Int(x, y);
-        if (puertasRegistradas.TryGetValue(pos, out PuertaMazmorra puerta))
+        Vector2Int posicionPuerta = new Vector2Int(xPos, yPos);
+        if (puertasRegistradas.TryGetValue(posicionPuerta, out PuertaMazmorra puerta))
         {
             return puerta;
         }
         return null;
     }
 
-    public PuertaMazmorra ObtenerPuertaMasCercana(int x, int y)
+    public PuertaMazmorra ObtenerPuertaMasCercana(int xPos, int yPos)
     {
         PuertaMazmorra mejorPuerta = null;
         float mejorDistancia = float.MaxValue;
 
-        foreach (var kvp in puertasRegistradas)
+        foreach (var keyValuePair in puertasRegistradas)
         {
-            Vector2Int posPuerta = kvp.Key;
+            Vector2Int posicionPuerta = keyValuePair.Key;
             
-            float dist = Mathf.Max(Mathf.Abs(x - posPuerta.x), Mathf.Abs(y - posPuerta.y));
+            float dist = Mathf.Max(Mathf.Abs(xPos - posicionPuerta.x), Mathf.Abs(yPos - posicionPuerta.y));
             
             if (dist < mejorDistancia)
             {
                 mejorDistancia = dist;
-                mejorPuerta = kvp.Value;
+                mejorPuerta = keyValuePair.Value;
             }
         }
         return mejorPuerta;

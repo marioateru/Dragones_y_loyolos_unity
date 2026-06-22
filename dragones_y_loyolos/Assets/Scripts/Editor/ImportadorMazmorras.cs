@@ -47,7 +47,7 @@ public class ImportadorMazmorras : CustomTmxImporter
         
         foreach (SuperObject obj in objetosTiled)
         {
-            // 1. PUERTAS
+            // Obtenemos las puertas
             if (obj.m_Type == "Puerta" || obj.m_TiledName == "Puerta")
             {
                 GameObject prefabPuerta = Resources.Load<GameObject>("Prefabs/Puerta_Generica");
@@ -68,7 +68,7 @@ public class ImportadorMazmorras : CustomTmxImporter
                         if (propiedadesPuerta.TryGetCustomProperty("destinoY", out CustomProperty pY))
                             if (int.TryParse(pY.m_Value, out int val)) puertaScript.destinoY = val;
                             
-                        // FIX: Add obj.m_Id to make name 100% unique in prefab
+                        // Para que en caso de que se repita el objeto, sea único por id
                         puertaInstanciada.name = $"Puerta_A_Sala_{puertaScript.idSalaDestino}_ID_{obj.m_Id}";
                     }
                     GameObject.DestroyImmediate(obj.gameObject);
@@ -76,7 +76,7 @@ public class ImportadorMazmorras : CustomTmxImporter
                 continue; 
             }
             
-            // 2. ENTIDADES
+            // Obtenemos las entidades
             int idEntidad = -1;
             string propValue = "";
             SuperCustomProperties propiedadesObj = obj.GetComponent<SuperCustomProperties>();
@@ -104,7 +104,6 @@ public class ImportadorMazmorras : CustomTmxImporter
                 {
                     try 
                     {
-                        // FIX: Timestep 0 instead of 1
                         int filasActualizadas = connection.Execute(@"UPDATE Entidades_sala_proposito_contenido 
                             SET Xpos = ?, Ypos = ?, id_sala_proposito_contenido = ? 
                             WHERE id_entidades = ? AND timestep = 0", 
@@ -116,7 +115,6 @@ public class ImportadorMazmorras : CustomTmxImporter
                         }
                         else
                         {
-                            // FIX: Timestep 0 instead of 1
                             connection.Execute(@"INSERT INTO Entidades_sala_proposito_contenido 
                                 (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) 
                                 VALUES (0, 0, ?, ?, ?, ?)", 
@@ -127,9 +125,6 @@ public class ImportadorMazmorras : CustomTmxImporter
                     }
                     catch (System.Exception e) { Debug.LogError($"Error SQL en entidad {idEntidad}: {e.Message}"); }
                 }
-
-                // FIX: NO DESTROY HERE! Leave object so ModRebuilder can find it later.
-                // GameObject.DestroyImmediate(obj.gameObject); 
             }
         }
 

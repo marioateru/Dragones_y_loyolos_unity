@@ -3,8 +3,10 @@ using System.Collections.Generic;
 
 public abstract class Entidad : MonoBehaviour
 {
+    // Constante para alinear la entidad de juego con la loseta.
     private const float TILE_CENTER_OFFSET = 0.5f;
-    [Header("Referencias SQL")]
+
+    [Header("Claves SQL")]
     [field: SerializeField] public int id_entidades { get; private set; } 
     [field: SerializeField] public int id_stats_base { get; private set; } 
 
@@ -25,17 +27,26 @@ public abstract class Entidad : MonoBehaviour
 
     public bool EstaDefendido { get; private set; } = false;
     public int MaxHpT0 { get; private set; }
-    public List<Acciones> accionesPermitidas = new List<Acciones>();
-
-    protected GameManager gameManager;
     public bool IsRun {get; protected set;}
     public bool IsHighPriority {get; protected set;}
+    public List<Acciones> accionesPermitidas = new List<Acciones>();
+    protected GameManager gameManager;
 
     public virtual void Awake()
     {
         gameManager = FindFirstObjectByType<GameManager>();
     }
 
+    public bool IsDead() => hp <= 0;
+
+    // Permite establecer si la entidad se procesa en cola y con destreza estándar.
+    public void EstablecerEstadoDeProcesamiento(bool run, bool highPrio)
+    {
+        this.IsRun = run;
+        this.IsHighPriority = highPrio;
+    }
+
+    // Función que permite hacer una copia de los valores del SQL.
     public void InicializarDatosSQL(int idEnt, int idStats, StatsBaseEntidadesSQL estadoStats, int xInicial, int yInicial, int hpMaximoT0)
     {
         this.id_entidades = idEnt;
@@ -57,21 +68,17 @@ public abstract class Entidad : MonoBehaviour
         if (IsDead()) gameObject.SetActive(false);
     }
 
-    public bool IsDead() => hp <= 0;
 
-    public void EstablecerEstadoDeProcesamiento(bool run, bool highPrio)
-    {
-        this.IsRun = run;
-        this.IsHighPriority = highPrio;
-    }
-
+    // Función que permite implementar lógica para seleccionar una acción.
     public abstract void ChooseAction();
 
+    // Función que sube la acción al GameManager.
     protected void SubmitAction(Acciones accion, float targetX, float targetY)
     {
         gameManager.RegistrarEleccion(this, accion, Mathf.RoundToInt(targetX), Mathf.RoundToInt(targetY));
     }
 
+    // Función a través de la cual la entidad de juego recibe una acción.
     public virtual void EjecutarAccion(Acciones accion, int targetX, int targetY)
     {
         switch (accion)
@@ -87,18 +94,17 @@ public abstract class Entidad : MonoBehaviour
                 if (objetivoAtaque != null)
                 {
                     bool desventaja = objetivoAtaque.EstaDefendido; 
-                    int d20 = DnD_Rules.LanzarD20(tieneVentaja: false, tieneDesventaja: desventaja);
-                    int tiradaAtaque = d20 + fuerza;
+                    int resultadoTirada = DnD_Rules.LanzarD20(tieneVentaja: false, tieneDesventaja: desventaja);
+                    int tiradaAtaque = resultadoTirada + fuerza;
 
-                    // FIXME: esta regla de cuando sacas 20 aciertas es un poco random, puede fastidiar al jugador.
-                    bool hit = (d20 == 20) || (tiradaAtaque >= objetivoAtaque.ac);
+                    bool isHit = (resultadoTirada == 20) || (tiradaAtaque >= objetivoAtaque.ac);
                     
-                    Debug.Log($"<color=orange>[Combate]</color> {gameObject.name} ataca a {objetivoAtaque.gameObject.name}. Tirada: {d20} + {fuerza} = {tiradaAtaque} vs AC {objetivoAtaque.ac}. ¿Impacta?: {hit}");
+                    Debug.Log($"<color=orange>[Combate]</color> {gameObject.name} ataca a {objetivoAtaque.gameObject.name}. Tirada: {resultadoTirada} + {fuerza} = {tiradaAtaque} vs AC {objetivoAtaque.ac}. ¿Impacta?: {isHit}");
 
-                    if (hit)
+                    if (isHit)
                     {
                         int dannoTotal = Mathf.Max(1, DnD_Rules.LanzarDados(1, 4) + fuerza);
-                        objetivoAtaque.RecibirInteraccion(this, Acciones.Atacar, dannoTotal);
+                        objetivoAtaque.RecibirDanno(dannoTotal);
                     }
                 }
                 else 
@@ -113,49 +119,37 @@ public abstract class Entidad : MonoBehaviour
 
             case Acciones.Interactuar:
                 Entidad objetivoInteraccion = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
-                if (objetivoInteraccion != null) objetivoInteraccion.RecibirInteraccion(this, Acciones.Interactuar);
+                if (objetivoInteraccion != null) objetivoInteraccion.Interactuar();
                 break;
                 
             case Acciones.Consumir:
-                if (this.hp >= this.MaxHpT0)
-                {
-                    Debug.Log($"<color=yellow>[Salud]</color> {gameObject.name} ya tiene HP máximo ({this.MaxHpT0}). No hace nada.");
-                    return; 
-                }
                 int cantidadACurar = DnD_Rules.LanzarDados(1, 8);
-                RecibirInteraccion(this, Acciones.Consumir, cantidadACurar);
+                Sanar(cantidadACurar);
                 break;
         }
     }
 
-    // Muy redundante! Podemos procesarlo desde EjecutarAcción!
-    // Se ideó para que la entidad de forma privada cambiara su estado, pero eso ya lo hace en EjecutarAcción.
-    // Gajes del programador junior...
-    public virtual void RecibirInteraccion(Entidad origen, Acciones tipoInteraccion, int valorData = 0)
+    private void RecibirDanno(int damage)
     {
-        switch (tipoInteraccion)
-        {
-            case Acciones.Atacar:
-                this.hp -= valorData;
-                Debug.Log($"<color=red>[Daño]</color> {gameObject.name} recibe {valorData} de daño. HP restante: {this.hp}");
-                
-                if (IsDead()) 
-                {
-                    Debug.Log($"<color=red>[Muerte]</color> {gameObject.name} ha muerto.");
-                    gameObject.SetActive(false);
-                }
-                break;
-
-            case Acciones.Consumir:
-                this.hp = Mathf.Min(this.hp + valorData, this.MaxHpT0);
-                Debug.Log($"<color=green>[Curación]</color> {gameObject.name} se cura. HP actual: {this.hp}/{this.MaxHpT0}");
-                break;
-            default:
-                Debug.Log("El recibir esta acción aún no está implementado");
-                break;
-        }
+        this.hp -= damage;
+        Debug.Log($"<color=red>[Daño]</color> {gameObject.name} recibe {damage} puntos de daño. HP: {this.hp}");
+        
+        if (IsDead()) gameObject.SetActive(false);
     }
 
+    private void Sanar(int cantidadACurar)
+    {
+        // Impide que nos podamos sanar más allá de nuestra HP máxima.
+        this.hp = Mathf.Min(this.hp + cantidadACurar, this.MaxHpT0);
+        Debug.Log($"<color=green>[Curación]</color> {gameObject.name} se sana {cantidadACurar} puntos de vida. HP: {this.hp}/{this.MaxHpT0}");
+    }
+    public virtual void Interactuar()
+    {
+        Debug.LogWarning("Esta acción aún no está implementada");
+    }
+
+    // Función para alinear las entidades de juego con la cuadrícula.
+    // Se usa "-yPos" en vez de + "yPos" pues en los mapas de tiled, el vector (0, -1) apunta hacia arriba.
     private void ActualizarPosicionVisual()
     {
         transform.position = new Vector3(xPos + TILE_CENTER_OFFSET, -yPos - TILE_CENTER_OFFSET, 0f);

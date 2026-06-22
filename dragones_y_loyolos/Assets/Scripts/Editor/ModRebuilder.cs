@@ -9,7 +9,7 @@ public class ModRebuilder : EditorWindow
     [MenuItem("Modding Tools/Reconstruir Base de Datos de Niveles")]
     public static void RebuildDatabase()
     {
-        Debug.Log("[Rebuilder] Iniciando compilación de mapas...");
+        Debug.Log("[Rebuilder] Iniciando inserción de entidades en salas");
 
         string dbPath = Application.streamingAssetsPath + "/dragones_y_loyolos.db";
         var connection = new SQLiteConnection(dbPath, SQLiteOpenFlags.ReadWrite);
@@ -43,17 +43,17 @@ public class ModRebuilder : EditorWindow
                 if (propiedadesObjeto != null)
                 {
                     int idEntidad = -1;
-                    string propValue = "";
+                    string valorPropiedad = "";
                     
-                    if (propiedadesObjeto.TryGetCustomProperty("id_entidades", out CustomProperty p1)) propValue = p1.m_Value;
-                    else if (propiedadesObjeto.TryGetCustomProperty("id_entidad", out CustomProperty p2)) propValue = p2.m_Value;
-                    else if (propiedadesObjeto.TryGetCustomProperty("idEntidad", out CustomProperty p3)) propValue = p3.m_Value;
+                    if (propiedadesObjeto.TryGetCustomProperty("id_entidades", out CustomProperty p1)) valorPropiedad = p1.m_Value;
+                    else if (propiedadesObjeto.TryGetCustomProperty("id_entidad", out CustomProperty p2)) valorPropiedad = p2.m_Value;
+                    else if (propiedadesObjeto.TryGetCustomProperty("idEntidad", out CustomProperty p3)) valorPropiedad = p3.m_Value;
 
-                    if (!string.IsNullOrEmpty(propValue))
+                    if (!string.IsNullOrEmpty(valorPropiedad))
                     {
-                        if (float.TryParse(propValue, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float fId)) 
+                        if (float.TryParse(valorPropiedad, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float floatId)) 
                         {
-                            idEntidad = Mathf.RoundToInt(fId);
+                            idEntidad = Mathf.RoundToInt(floatId);
                         }
                     }
 
@@ -63,7 +63,7 @@ public class ModRebuilder : EditorWindow
                         {
                             if (jugadorEncontrado) 
                             {
-                                Debug.LogWarning($"[Rebuilder] Jugador duplicado encontrado en Sala {salaImportada.idSalaActual}. Ignorando...");
+                                Debug.LogWarning($"[Rebuilder] Jugador duplicado encontrado en Sala {salaImportada.idSalaActual}. Ignorando.");
                                 continue; 
                             }
                             jugadorEncontrado = true;

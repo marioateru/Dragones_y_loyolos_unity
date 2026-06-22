@@ -3,6 +3,7 @@ using UnityEngine.Tilemaps;
 
 public class TileCollisionChecker : MonoBehaviour
 {
+    private const float TILE_CENTER_OFFSET = 0.5f;
     private Tilemap tilemapMuros;
     
     public void AsignarMuros(Tilemap muros)
@@ -10,24 +11,21 @@ public class TileCollisionChecker : MonoBehaviour
         this.tilemapMuros = muros;
     }
 
-    public bool HayMuro(int targetX, int targetY)
+    // Comprueba si hay un muro en el tile xPos yPos
+    public bool HayMuro(int xPos, int yPos)
     {
         if (tilemapMuros == null) return false;
 
-        // 1. Dónde está ese punto físicamente en el mundo según la matemática pura
-        Vector3 posicionMundo = new Vector3(targetX + 0.5f, -targetY - 0.5f, 0f);
+        Vector3 posicionMundo = new Vector3(xPos + TILE_CENTER_OFFSET, -yPos - TILE_CENTER_OFFSET, 0f);
 
-        // 2. LA MANERA "X": Le restamos el offset (Ese Y=-1 de tu captura) que ST2U le pone a la capa.
-        // Esto alinea la matemática con el gráfico dibujado de forma automática y perfecta.
         Vector3 posicionLocalCapa = posicionMundo - tilemapMuros.transform.position;
 
-        // 3. Ahora sí, le pedimos la celda exacta a Unity
-        Vector3Int celdaReal = tilemapMuros.layoutGrid.WorldToCell(posicionLocalCapa);
+        Vector3Int posRealCelda = tilemapMuros.layoutGrid.WorldToCell(posicionLocalCapa);
 
-        return tilemapMuros.HasTile(celdaReal);
+        return tilemapMuros.HasTile(posRealCelda);
     }
 
-    // Algoritmo de trazado de línea (Bresenham) para evitar atravesar muros de lejos
+    // Algoritmo de Bresenham.
     public bool HayMuroEnRuta(int coordenadaInicioX, int coordenadaInicioY, int coordenadaDestinoX, int coordenadaDestinoY)
     {
         if (tilemapMuros == null) return false;
@@ -45,11 +43,10 @@ public class TileCollisionChecker : MonoBehaviour
 
         while (true)
         {
-            if (HayMuro(coordenadaActualX, coordenadaActualY)) return true; // Chocó con un muro
+            if (HayMuro(coordenadaActualX, coordenadaActualY)) return true; 
             
-            if (coordenadaActualX == coordenadaDestinoX && coordenadaActualY == coordenadaDestinoY) break; // Llegó al destino
+            if (coordenadaActualX == coordenadaDestinoX && coordenadaActualY == coordenadaDestinoY) break;
 
-            // Constante matemática del algoritmo para calcular el diferencial sin usar floats (decimales)
             int dobleErrorAcumulado = 2 * errorAcumulado; 
             
             if (dobleErrorAcumulado > -distanciaY)

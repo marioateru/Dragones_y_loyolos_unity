@@ -60,6 +60,7 @@ public class GridInteractionUI : MonoBehaviour
         }
     }
 
+    // Selecciona una casilla al hacer clic izquierdo.
     public void ActivarSeleccionIzquierda(int x, int y, bool esInvalido)
     {
         if (instanciaCursor != null)
@@ -73,6 +74,7 @@ public class GridInteractionUI : MonoBehaviour
         OcultarMenu();
     }
 
+    // Muestra las acciones al seleccionar con clic derecho. 
     public void ActivarMenuDerecho(int x, int y, Vector2 origenVisual, List<Acciones> acciones, bool esInvalido, System.Action<Acciones> callback)
     {
         if (instanciaCursor != null)
@@ -161,8 +163,6 @@ public class GridInteractionUI : MonoBehaviour
             lineaRuta.startColor = Color.red;
             lineaRuta.endColor = Color.red;
         }
-        
-        // TODO: Si la interacción no es válida, que a lo mejor se desactive el botón o algo.
     }
 
     public void OcultarTodo()
