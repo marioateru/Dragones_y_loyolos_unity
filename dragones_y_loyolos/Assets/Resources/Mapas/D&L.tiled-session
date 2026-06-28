@@ -6,7 +6,7 @@
     "fileStates": {
         "Dungeon_tileset.tsx": {
             "scaleInDock": 2.0197,
-            "scaleInEditor": 1
+            "scaleInEditor": 4.28
         },
         "dungeon_0.tmx": {
             "scale": 1.2133,
@@ -26,20 +26,20 @@
         },
         "mazmorra_1.tmx": {
             "expandedObjectLayers": [
-                6,
-                5
+                5,
+                6
             ],
-            "scale": 1,
+            "scale": 3,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 213.5,
-                "y": 132.5
+                "x": 34.83333333333333,
+                "y": 88.49999999999999
             }
         },
         "mazmorra_2.tmx": {
             "expandedObjectLayers": [
-                6,
-                5
+                5,
+                6
             ],
             "scale": 2,
             "selectedLayer": 4,
@@ -77,11 +77,11 @@
                 9,
                 5
             ],
-            "scale": 0.6015,
-            "selectedLayer": 1,
+            "scale": 4.5369,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 127.18204488778053,
-                "y": -37.40648379052368
+                "x": -294.1435782141991,
+                "y": -324.56082346977007
             }
         },
         "mazmorra_6.tmx": {
@@ -89,23 +89,23 @@
                 9,
                 5
             ],
-            "scale": 1.8026,
-            "selectedLayer": 4,
+            "scale": 23,
+            "selectedLayer": 2,
             "viewCenter": {
-                "x": 137.30167535781652,
-                "y": -109.00920892044826
+                "x": 114.54347826086956,
+                "y": -218.04347826086956
             }
         },
         "plantilla.tmx": {
             "expandedObjectLayers": [
-                5,
-                9
+                9,
+                5
             ],
-            "scale": 3,
+            "scale": 8,
             "selectedLayer": 4,
             "viewCenter": {
-                "x": 89.83333333333334,
-                "y": 82.83333333333331
+                "x": 24.6875,
+                "y": 6.75
             }
         }
     },
@@ -122,7 +122,8 @@
         "mazmorra_3.tmx",
         "mazmorra_4.tmx",
         "mazmorra_5.tmx",
-        "mazmorra_6.tmx"
+        "mazmorra_6.tmx",
+        "plantilla.tmx"
     ],
     "project": "D&L.tiled-project",
     "property.type": "int",
@@ -132,9 +133,9 @@
         "mazmorra_2.tmx",
         "mazmorra_3.tmx",
         "mazmorra_4.tmx",
+        "plantilla.tmx",
         "mazmorra_6.tmx",
         "mazmorra_5.tmx",
-        "plantilla.tmx",
         "dungeon_2.tmx",
         "dungeon_0.tmx"
     ],

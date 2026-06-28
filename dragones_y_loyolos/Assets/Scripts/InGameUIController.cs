@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System;
+using TMPro;
 
 public class InGameUIController : MonoBehaviour
 {
@@ -10,18 +11,67 @@ public class InGameUIController : MonoBehaviour
     [Header("Paneles")]
     public GameObject panelPausa;
     public GameObject panelGameOver;
+
+    [Header("Texto stats")]
+    [SerializeField] private TextMeshProUGUI textoHp;
     
+    [Header("Textos Dificultad Dinámica")]
+    [SerializeField] private TextMeshProUGUI textoDificultad;
+    [SerializeField] private TextMeshProUGUI textoRiesgo;
+    [SerializeField] private TextMeshProUGUI textoDesglose;
+
     [Header("Avisos")]
     public GameObject avisoGuardado; 
 
     private GameManager gameManager;
     private SQLManager sqlManager;
+    private PlayerComponent jugador;
 
     void Awake()
     {
         Instancia = this;
+    }
+
+    private void Start()
+    {
         gameManager = FindFirstObjectByType<GameManager>();
         sqlManager = FindFirstObjectByType<SQLManager>();
+
+        Entidad.onEntityCreated += entidad_onEntityCreated;
+        DungeonMaster.OnDifficultyChanged += ActualizarUIDificultad;
+    }
+
+    private void OnDestroy()
+    {
+        if (jugador != null)
+        {
+            jugador.onStatsChangedByAction -= jugador_onStatsChangedByAction;
+        }
+
+        Entidad.onEntityCreated -= entidad_onEntityCreated;
+        DungeonMaster.OnDifficultyChanged -= ActualizarUIDificultad;
+    }
+
+    private void entidad_onEntityCreated(object sender, EventArgs e)
+    {
+        jugador = FindFirstObjectByType<PlayerComponent>();
+
+        if (jugador != null)
+        {
+            jugador.onStatsChangedByAction += jugador_onStatsChangedByAction;
+        }
+    }
+    
+    private void jugador_onStatsChangedByAction(object sender, Entidad.onStatsChangedByActionArgs e)
+    {
+        if (textoHp != null) textoHp.text = $"HP: {e.entidad.hp}";
+    }
+
+    private void ActualizarUIDificultad(NivelDificultad nivel, float riesgo, string desglose)
+    {
+        if (textoDificultad != null) textoDificultad.text = $"Dificultad: {nivel}";
+        if (textoRiesgo != null) textoRiesgo.text = $"Riesgo: {riesgo:F2}";
+        if (textoDesglose != null) textoDesglose.text = desglose;
     }
 
     public void AlternarPausa(bool pausar)

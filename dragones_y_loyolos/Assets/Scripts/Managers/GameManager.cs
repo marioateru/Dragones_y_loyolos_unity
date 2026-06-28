@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Unity.Cinemachine;
 using UnityEngine;
+using System;
 using UnityEngine.InputSystem;
 
 public class AccionEnMemoria {
@@ -50,6 +51,7 @@ public class GameManager : MonoBehaviour
 
     [Header("Guardado")]
     public int turnosParaAutoguardado = 10;
+    public static event EventHandler<int> OnGameStateSavedOrLoaded;
 
     private List<Entidad> entidadesEnMapa = new List<Entidad>();
     private List<Entidad> entityQueue = new List<Entidad>();
@@ -326,6 +328,8 @@ public class GameManager : MonoBehaviour
         timestepActual++;
 
         if (!ML_Core.IsMLMode && timestepActual % turnosParaAutoguardado == 0) GuardarPartidaEnDisco();
+
+        OnGameStateSavedOrLoaded?.Invoke(this, timestepActual);
 
         estadoActual = GameState.PreparandoTurno;
     }

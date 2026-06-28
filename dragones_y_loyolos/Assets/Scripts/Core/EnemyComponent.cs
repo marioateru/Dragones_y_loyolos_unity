@@ -13,7 +13,6 @@ public class EnemyComponent : Entidad
     private PlayerComponent jugadorObjetivo;
     private TileCollisionChecker collisionChecker;
     private SQLManager sqlManager;
-    
     private int vidaMaxima = -1;
 
     public override void Awake()
@@ -23,6 +22,43 @@ public class EnemyComponent : Entidad
         sqlManager = FindFirstObjectByType<SQLManager>();
     }
 
+    protected override void Moverse(int targetX, int targetY)
+    {
+        this.xPos = targetX;
+        this.yPos = targetY;
+    }
+
+    protected override void Atacar(int targetX, int targetY)
+    {
+        Entidad objetivoAtaque = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
+        if (objetivoAtaque != null)
+        {
+            bool desventaja = objetivoAtaque.EstaDefendido; 
+            int resultadoTirada = DnD_Rules.LanzarD20(tieneVentaja: false, tieneDesventaja: desventaja, DungeonMaster.EnemyHitMultiplier);
+            int tiradaAtaque = resultadoTirada + fuerza;
+            bool isHit = (resultadoTirada == 20) || (tiradaAtaque >= objetivoAtaque.ac);
+            
+            Debug.Log($"<color=red>[Combate-Enemigo]</color> {gameObject.name} ataca. Tirada: {resultadoTirada}");
+            if (isHit)
+            {
+                int dannoBase = DnD_Rules.LanzarDados(1, 4, DungeonMaster.EnemyDamageMultiplier);
+                int dannoTotal = Mathf.Max(1, dannoBase + fuerza);
+                objetivoAtaque.RecibirDanno(dannoTotal);
+            }
+        }
+    }
+
+    protected override void Defender()
+    {
+        this.EstaDefendido = true;
+    }
+
+    protected override void Consumir()
+    {
+        int cantidadACurar = DnD_Rules.LanzarDados(1, 8);
+        Sanar(cantidadACurar);
+    }
+
     public override void ChooseAction()
     {
         if (IsDead()) 
@@ -30,38 +66,30 @@ public class EnemyComponent : Entidad
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
-
-        if (vidaMaxima <= 0) 
-            vidaMaxima = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades);
-
+        if (vidaMaxima <= 0) vidaMaxima = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades);
         if (jugadorObjetivo == null) jugadorObjetivo = FindFirstObjectByType<PlayerComponent>();
-
         int miPosX = Mathf.RoundToInt(xPos);
         int miPosY = Mathf.RoundToInt(yPos);
-
         if (jugadorObjetivo == null || jugadorObjetivo.IsDead())
         {
             Vector2Int patrullaAleatoria = CalcularCasillaAleatoria(miPosX, miPosY);
             SubmitAction(Acciones.Moverse, patrullaAleatoria.x, patrullaAleatoria.y);
             return;
         }
-
         int jugadorX = Mathf.RoundToInt(jugadorObjetivo.xPos);
         int jugadorY = Mathf.RoundToInt(jugadorObjetivo.yPos);
         int distReal = Mathf.Max(Mathf.Abs(miPosX - jugadorX), Mathf.Abs(miPosY - jugadorY));
-
         bool tieneLineaVision = !collisionChecker.HayMuroEnRuta(miPosX, miPosY, jugadorX, jugadorY);
 
-        if (distReal > rangoVision || !tieneLineaVision)
+        int rangoVisionDinamico = Mathf.RoundToInt(rangoVision * DungeonMaster.EnemyDetectionRadiusMultiplier);
+        if (distReal > rangoVisionDinamico || !tieneLineaVision)
         {
             Vector2Int patrullaAleatoria = CalcularCasillaAleatoria(miPosX, miPosY);
             SubmitAction(Acciones.Moverse, patrullaAleatoria.x, patrullaAleatoria.y);
             return;
         }
-
         bool quiereHuir = hp <= vidaMaxima * umbralHuida;
-        bool valiente = quiereHuir && (UnityEngine.Random.value <= probContraataque);
-
+        bool valiente = quiereHuir && (UnityEngine.Random.value <= (probContraataque * DungeonMaster.EnemyEscapeMultiplier));
         if (quiereHuir && !valiente)
         {
             Vector2Int rutaEscape = CalcularSiguientePasoHuida(miPosX, miPosY, jugadorObjetivo);
@@ -71,19 +99,13 @@ public class EnemyComponent : Entidad
                 return;
             }
         }
-
         if (distReal <= 1)
         {
             SubmitAction(Acciones.Atacar, jugadorX, jugadorY);
             return;
         }
-
         Vector2Int rutaAvance = CalcularSiguientePasoAStar(miPosX, miPosY, jugadorX, jugadorY);
-
-        if (rutaAvance.x != -9999)
-        {
-            ProcesarPaso(rutaAvance);
-        }
+        if (rutaAvance.x != -9999) ProcesarPaso(rutaAvance);
         else
         {
             Vector2Int rutaAlternativa = CalcularCasillaAleatoria(miPosX, miPosY);
@@ -94,10 +116,8 @@ public class EnemyComponent : Entidad
     private void ProcesarPaso(Vector2Int avance)
     {
         Entidad obstaculo = gameManager.ObtenerEntidadEnCasilla(avance.x, avance.y);
-        if (obstaculo != null && obstaculo != this)
-            SubmitAction(Acciones.Atacar, avance.x, avance.y);
-        else
-            SubmitAction(Acciones.Moverse, avance.x, avance.y);
+        if (obstaculo != null && obstaculo != this) SubmitAction(Acciones.Atacar, avance.x, avance.y);
+        else SubmitAction(Acciones.Moverse, avance.x, avance.y);
     }
 
     private Vector2Int CalcularSiguientePasoAStar(int startX, int startY, int targetX, int targetY)
@@ -111,12 +131,9 @@ public class EnemyComponent : Entidad
     {
         int adversarioXPos = Mathf.RoundToInt(adversario.xPos);
         int adversarioYPos = Mathf.RoundToInt(adversario.yPos);
-        
         List<Vector2Int> casillaValida = Pathfinding.GetValidAdjacent(new Vector2Int(origenX, origenY), 1, collisionChecker, gameManager);
-        
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
         int mejorDist = -1;
-
         foreach (var casilla in casillaValida)
         {
             int dist = Mathf.Max(Mathf.Abs(casilla.x - adversarioXPos), Mathf.Abs(casilla.y - adversarioYPos));
@@ -129,8 +146,5 @@ public class EnemyComponent : Entidad
         return mejorCasilla;
     }
 
-    private Vector2Int CalcularCasillaAleatoria(int origenX, int origenY)
-    {
-        return Pathfinding.GetRandomValidTile(new Vector2Int(origenX, origenY), collisionChecker, gameManager);
-    }
+    private Vector2Int CalcularCasillaAleatoria(int origenX, int origenY) => Pathfinding.GetRandomValidTile(new Vector2Int(origenX, origenY), collisionChecker, gameManager);
 }

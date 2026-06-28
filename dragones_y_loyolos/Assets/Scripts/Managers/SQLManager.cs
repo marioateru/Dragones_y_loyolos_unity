@@ -43,6 +43,8 @@ public class SQLManager : MonoBehaviour
         }
     }
 
+    public SQLiteConnection GetConnection() => connection;
+
     public int ObtenerUltimoTimestep()
     {
         var ultimoTimestep = connection.Query<EntidadesSalaPropositoContenidoSQL>(

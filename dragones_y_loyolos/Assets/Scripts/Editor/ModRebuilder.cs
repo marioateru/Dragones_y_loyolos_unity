@@ -82,7 +82,7 @@ public class ModRebuilder : EditorWindow
                 }
             }
         }
-
+        
         connection.Close();
 
         string persistentPath = Application.persistentDataPath + "/dragones_y_loyolos.db";
