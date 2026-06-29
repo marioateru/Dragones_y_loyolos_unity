@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using UnityEngine;
 using SQLite4Unity3d;
 
@@ -21,19 +22,38 @@ public class DungeonMaster : MonoBehaviour
     public static float PlayerHealMultiplier { get; private set; } = 1.0f;
 
     private SQLManager sqlManager;
+    private GameManager gameManager;
+    private LectorRedBayesiana redBayesiana;
     private int lastEvaluatedTimestep = -1;
+
+    [SerializeField]
     private int timestepsToLookBackAt = 50;
+    [SerializeField]
+    private int turnsUntilReevaluate = 10;
     
     public static event Action<NivelDificultad, float, string> OnDifficultyChanged;
+
+    private readonly string[] estadosRiesgo = { "safe", "moderate_damage", "high_damage", "death" };
 
     void Start()
     {
         sqlManager = FindFirstObjectByType<SQLManager>();
+        gameManager = FindFirstObjectByType<GameManager>();
         GameManager.OnGameStateSavedOrLoaded += GameManager_OnGameStateSavedOrLoaded;
         
-        // Enviamos un nivel y desglose inicial para que el juego no se ejecute sobre nada
+        string jsonPath = Path.Combine(Application.streamingAssetsPath, "modelo_red_bayesiana_dificultad.json");
+        if (File.Exists(jsonPath))
+        {
+            string jsonContent = File.ReadAllText(jsonPath);
+            redBayesiana = new LectorRedBayesiana(jsonContent);
+        }
+        else
+        {
+            Debug.LogError("[DungeonMaster] No se encontró el modelo bayesiano en: " + jsonPath);
+        }
+
         ApplyMultipliers(NivelDificultad.D3_normal);
-        OnDifficultyChanged?.Invoke(NivelDificultad.D3_normal, 0.25f, "Sin parametros");
+        OnDifficultyChanged?.Invoke(NivelDificultad.D3_normal, 0.25f, "Esperando turnos para evaluar...");
     }
 
     void OnDestroy()
@@ -43,9 +63,8 @@ public class DungeonMaster : MonoBehaviour
 
     private void GameManager_OnGameStateSavedOrLoaded(object sender, int currentTimestep)
     {
-        if (sqlManager == null || currentTimestep <= 0) return;
-        
-        if (currentTimestep % 5 != 0 || currentTimestep == lastEvaluatedTimestep) return;
+        if (sqlManager == null || redBayesiana == null || currentTimestep <= 0) return;
+        if (currentTimestep % turnsUntilReevaluate != 0 || currentTimestep == lastEvaluatedTimestep) return;
 
         lastEvaluatedTimestep = currentTimestep;
 
@@ -57,53 +76,111 @@ public class DungeonMaster : MonoBehaviour
 
         int startTimestep = Mathf.Max(1, currentTimestep - timestepsToLookBackAt);
 
+        // --- 1. EXTRACCIÓN DE DATOS Y CLASIFICACIÓN EN BANDAS (Según JSON) ---
+        
         float hpRatio = (float)player.hp / Mathf.Max(1, player.MaxHpT0);
+        string hpBand = "high_81_100";
+        if (hpRatio <= 0.20f) hpBand = "critical_1_20";
+        else if (hpRatio <= 0.50f) hpBand = "low_21_50";
+        else if (hpRatio <= 0.80f) hpBand = "medium_51_80";
 
         var hpHistory = connection.Query<StatsBaseEntidadesSQL>(
             "SELECT hp FROM Stats_base_entidades WHERE id_entidades = 1 AND timestep >= ? AND timestep <= ? ORDER BY timestep ASC, subTimestep ASC",
             startTimestep, currentTimestep);
-        
         int recentDamage = 0;
         for (int i = 1; i < hpHistory.Count; i++)
         {
             if (hpHistory[i].hp < hpHistory[i - 1].hp) 
-            {
                 recentDamage += (hpHistory[i - 1].hp - hpHistory[i].hp);
-            }
         }
-
-        int heals = connection.ExecuteScalar<int>(
-            "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades = 1 AND id_acciones = 'Consumir' AND timestep >= ?", 
-            startTimestep);
+        string damageBand = "none";
+        if (recentDamage >= 1 && recentDamage <= 10) damageBand = "low_1_10";
+        else if (recentDamage >= 11 && recentDamage <= 30) damageBand = "medium_11_30";
+        else if (recentDamage >= 31) damageBand = "high_31_plus";
 
         int kills = connection.ExecuteScalar<int>(
             "SELECT COUNT(DISTINCT id_entidades) FROM Stats_base_entidades WHERE id_entidades != 1 AND hp <= 0 AND timestep <= ?", 
             currentTimestep);
+        string killsBand = "0";
+        if (kills >= 1 && kills <= 5) killsBand = "1_5";
+        else if (kills >= 6 && kills <= 25) killsBand = "6_25";
+        else if (kills >= 26 && kills <= 75) killsBand = "26_75";
+        else if (kills >= 76) killsBand = "76_plus";
+
+        string progressBand = "start_0_50";
+        if (currentTimestep > 50 && currentTimestep <= 250) progressBand = "early_51_250";
+        else if (currentTimestep > 250 && currentTimestep <= 1000) progressBand = "mid_251_1000";
+        else if (currentTimestep > 1000 && currentTimestep <= 2500) progressBand = "late_1001_2500";
+        else if (currentTimestep > 2500) progressBand = "very_late_2501_plus";
+
+        int salaId = gameManager.salaActual != null ? gameManager.salaActual.idSalaActual : 0;
+        string roomBand = "room_0_1";
+        if (salaId == 2) roomBand = "room_2";
+        else if (salaId == 3) roomBand = "room_3";
+        else if (salaId == 4) roomBand = "room_4";
+        else if (salaId >= 5) roomBand = "room_5_plus";
 
         int enemyAttacks = connection.ExecuteScalar<int>(
-            "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades != 1 AND id_acciones = 'Atacar' AND timestep >= ?", 
-            startTimestep);
+            "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades != 1 AND id_acciones = 'Atacar' AND timestep = ?", 
+            currentTimestep);
+        string pressureBand = "none";
+        if (enemyAttacks == 1) pressureBand = "one";
+        else if (enemyAttacks == 2 || enemyAttacks == 3) pressureBand = "two_three";
+        else if (enemyAttacks >= 4) pressureBand = "four_plus";
 
-        string desglose = $"Ratio Vida: {hpRatio:F2}\n" +
-                          $"Danno Reciente: {recentDamage}\n" +
-                          $"Curaciones ({timestepsToLookBackAt}T): {heals}\n" +
-                          $"Bajas: {kills}\n" +
-                          $"Ataques recibidos: {enemyAttacks}";
+        int enemyActivity = connection.ExecuteScalar<int>(
+            "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades != 1 AND timestep = ?", 
+            currentTimestep);
+        string activityBand = "none";
+        if (enemyActivity >= 1 && enemyActivity <= 5) activityBand = "low_1_5";
+        else if (enemyActivity >= 6 && enemyActivity <= 15) activityBand = "medium_6_15";
+        else if (enemyActivity >= 16) activityBand = "high_16_plus";
 
-        float riskScore = 0f;
+        int playerConsume = connection.ExecuteScalar<int>(
+            "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades = 1 AND id_acciones = 'Consumir' AND timestep = ?", 
+            currentTimestep);
+        string consumptionBand = playerConsume > 0 ? "consume" : "no_consume";
 
-        // Factores que aumentan el riesgo
-        riskScore += (1f - hpRatio) * 0.4f;               // Vida baja
-        riskScore += (recentDamage > 30 ? 0.3f : 0f);     // Daño masivo reciente
-        riskScore += (enemyAttacks > 5 ? 0.2f : 0f);      // Presión enemiga alta
+
+        // --- 2. APLICACIÓN DE LA ECUACIÓN (6): Inferencia Bayesiana (Naive Bayes) ---
+        // P(R=r | X) = ( P(R=r) * Π P(X_j | R=r) ) / Σ [ P(R=r') * Π P(X_j | R=r') ]
         
-        // Factores que reducen el riesgo
-        riskScore -= (heals > 2 ? 0.1f : 0f);             // Curación activa
-        riskScore -= (kills > 20 ? 0.2f : 0f);            // Dominio del jugador
+        double[] numeradorProbabilidades = new double[4];
+        double denominadorSumaTotal = 0.0;
 
-        riskScore = Mathf.Clamp(riskScore, 0f, 1f);
+        for (int i = 0; i < estadosRiesgo.Length; i++)
+        {
+            string riesgo = estadosRiesgo[i];
 
-        NivelDificultad currentDifficulty = NivelDificultad.D3_normal;
+            // P(R=r)
+            double probConjunta = redBayesiana.ObtenerPrior(riesgo);
+            
+            // Π P(X_j | R=r)
+            probConjunta *= redBayesiana.ObtenerProbabilidad("player_hp_band", riesgo, hpBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("recent_damage_band", riesgo, damageBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("kills_so_far_band", riesgo, killsBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("progress_band", riesgo, progressBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("room_band", riesgo, roomBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("enemy_attack_pressure_band", riesgo, pressureBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("enemy_activity_band", riesgo, activityBand);
+            probConjunta *= redBayesiana.ObtenerProbabilidad("player_consumption_band", riesgo, consumptionBand);
+
+            numeradorProbabilidades[i] = probConjunta;
+            denominadorSumaTotal += probConjunta; 
+        }
+
+        // Normalización posterior
+        double pSafe = numeradorProbabilidades[0] / denominadorSumaTotal;
+        double pModerate = numeradorProbabilidades[1] / denominadorSumaTotal;
+        double pHigh = numeradorProbabilidades[2] / denominadorSumaTotal;
+        double pDeath = numeradorProbabilidades[3] / denominadorSumaTotal;
+
+        // --- 3. APLICACIÓN DE LA ECUACIÓN (8): Puntuación Continua de Riesgo ---
+        // risk_score = P(R = death) + P(R = high_damage) + 0.5 * P(R = moderate_damage)
+        float riskScore = (float)(pDeath + pHigh + (0.5 * pModerate));
+
+        // --- 4. UMBRALES DE DIFICULTAD (Tabla 12) ---
+        NivelDificultad currentDifficulty;
         if (riskScore >= 0.70f) currentDifficulty = NivelDificultad.D1_asistido_muy_facil;
         else if (riskScore >= 0.40f && riskScore < 0.70f) currentDifficulty = NivelDificultad.D2_facil;
         else if (riskScore >= 0.18f && riskScore < 0.40f) currentDifficulty = NivelDificultad.D3_normal;
@@ -111,9 +188,18 @@ public class DungeonMaster : MonoBehaviour
 
         ApplyMultipliers(currentDifficulty);
         
+        string desglose = $"<b>Probabilidades Naive Bayes:</b>\n" +
+                          $"Muerte: {(pDeath*100):F2}%\n" +
+                          $"Daño Alto: {(pHigh*100):F2}%\n" +
+                          $"Daño Mod: {(pModerate*100):F2}%\n" +
+                          $"Seguro: {(pSafe*100):F2}%\n" +
+                          $"---------------------\n" +
+                          $"<b>Bandas Extraídas:</b>\n" +
+                          $"HP: {hpBand}\n" +
+                          $"Daño 50T: {damageBand}\n" +
+                          $"Bajas: {killsBand}";
+
         OnDifficultyChanged?.Invoke(currentDifficulty, riskScore, desglose);
-        
-        Debug.Log($"[DungeonMaster] Turno {currentTimestep} evaluado. Riesgo: {riskScore:F2}. Dificultad: {currentDifficulty}");
     }
 
     private void ApplyMultipliers(NivelDificultad level)
@@ -141,5 +227,50 @@ public class DungeonMaster : MonoBehaviour
                 EnemyEscapeMultiplier = 0.85f; PlayerHealMultiplier = 0.90f;
                 break;
         }
+    }
+}
+
+public class LectorRedBayesiana
+{
+    private string contenidoJson;
+
+    public LectorRedBayesiana(string json)
+    {
+        this.contenidoJson = json;
+    }
+
+    public double ObtenerPrior(string estadoRiesgo)
+    {
+        int indicePrior = contenidoJson.IndexOf("\"prior\"");
+        int indiceRiesgo = contenidoJson.IndexOf($"\"{estadoRiesgo}\"", indicePrior);
+        return ExtraerNumero(indiceRiesgo);
+    }
+
+    public double ObtenerProbabilidad(string variable, string estadoRiesgo, string bandaValor)
+    {
+        int indiceVariable = contenidoJson.IndexOf($"\"{variable}\"");
+        int indiceRiesgo = contenidoJson.IndexOf($"\"{estadoRiesgo}\"", indiceVariable);
+        int indiceBanda = contenidoJson.IndexOf($"\"{bandaValor}\"", indiceRiesgo);
+        return ExtraerNumero(indiceBanda);
+    }
+
+    private double ExtraerNumero(int indiceInicial)
+    {
+        if (indiceInicial == -1) return 0.0001; 
+        
+        int dosPuntos = contenidoJson.IndexOf(":", indiceInicial);
+        int coma = contenidoJson.IndexOf(",", dosPuntos);
+        int llave = contenidoJson.IndexOf("}", dosPuntos);
+        
+        int final = (coma != -1 && coma < llave) ? coma : llave;
+        
+        string numeroString = contenidoJson.Substring(dosPuntos + 1, final - (dosPuntos + 1)).Trim();
+        
+        if (double.TryParse(numeroString, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double valor))
+        {
+            return valor;
+        }
+        
+        return 0.0001;
     }
 }
