@@ -2,26 +2,30 @@ using UnityEngine;
 
 public static class DnD_Rules
 {
-    // TODO: tenemos que encontrar una forma de hacer bypass para permitir que el algoritmo DM manipule los dados
-    // FIXME: ya lo he hecho, pero está bastante guarro.
     public static int LanzarD20(bool tieneVentaja = false, bool tieneDesventaja = false)
     {
         int tirada1 = Random.Range(1, 21);
         int tirada2 = Random.Range(1, 21);
 
+        // Si tiene ventaja retornamos la mayor de las dos tiradas.
         if (tieneVentaja && !tieneDesventaja) return Mathf.Max(tirada1, tirada2);
+
+        // Si tiene desventaja retornamos la menor de las dos tiradas.
         if (tieneDesventaja && !tieneVentaja) return Mathf.Min(tirada1, tirada2);
         
         return tirada1;
     }
 
-    // Trucada para funcionar con el multiplicador de redes bayesianas
+    // Overload para funcionar con el multiplicador de redes bayesianas
     public static int LanzarD20(bool tieneVentaja = false, bool tieneDesventaja = false, float multiplicadorProbabilidadTirada = 0.01f)
     {
         int tirada1 = Random.Range(1, 21);
         int tirada2 = Random.Range(1, 21);
-
+        
+        // Si tiene ventaja retornamos la mayor de las dos tiradas.
         if (tieneVentaja && !tieneDesventaja) return Mathf.Max(tirada1, tirada2);
+
+        // Si tiene desventaja retornamos la menor de las dos tiradas.
         if (tieneDesventaja && !tieneVentaja) return Mathf.Min(tirada1, tirada2);
         
         if (multiplicadorProbabilidadTirada <= 0) multiplicadorProbabilidadTirada = 0.01f; 
@@ -38,7 +42,7 @@ public static class DnD_Rules
         return total;
     }
 
-    // Trucada para funcionar con el multiplicador de redes bayesianas
+    // Overload para funcionar con el multiplicador de redes bayesianas
     public static int LanzarDados(int cantidad, int caras, float multiplicadorProbabilidadTirada = 0.01f)
     {
         int total = 0;

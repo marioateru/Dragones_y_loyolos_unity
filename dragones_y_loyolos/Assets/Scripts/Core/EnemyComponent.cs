@@ -6,7 +6,7 @@ public class EnemyComponent : Entidad
     [Header("Configuración IA")]
     [Tooltip("Distancia a la que el enemigo detectará al jugador.")]
     public int rangoVision = 8; 
-
+    
     [Range(0f, 1f)] public float umbralHuida = 0.3f;
     [Range(0f, 1f)] public float probContraataque = 0.35f;
     
@@ -22,15 +22,18 @@ public class EnemyComponent : Entidad
         sqlManager = FindFirstObjectByType<SQLManager>();
     }
 
+    // Métodos abstractos implementados por EnemyComponent
     protected override void Moverse(int targetX, int targetY)
     {
         this.xPos = targetX;
         this.yPos = targetY;
     }
 
+    // Función de ataque con multiplicadores DungeonMaster implementados.
     protected override void Atacar(int targetX, int targetY)
     {
         Entidad objetivoAtaque = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
+
         if (objetivoAtaque != null)
         {
             bool desventaja = objetivoAtaque.EstaDefendido; 
@@ -61,38 +64,50 @@ public class EnemyComponent : Entidad
 
     public override void ChooseAction()
     {
+        // Si estamos muertos, no nos movemos del sitio
         if (IsDead()) 
         {
             SubmitAction(Acciones.Moverse, xPos, yPos); 
             return;
         }
+
         if (vidaMaxima <= 0) vidaMaxima = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades);
         if (jugadorObjetivo == null) jugadorObjetivo = FindFirstObjectByType<PlayerComponent>();
+        
         int miPosX = Mathf.RoundToInt(xPos);
         int miPosY = Mathf.RoundToInt(yPos);
+        
         if (jugadorObjetivo == null || jugadorObjetivo.IsDead())
         {
             Vector2Int patrullaAleatoria = CalcularCasillaAleatoria(miPosX, miPosY);
             SubmitAction(Acciones.Moverse, patrullaAleatoria.x, patrullaAleatoria.y);
             return;
         }
+
         int jugadorX = Mathf.RoundToInt(jugadorObjetivo.xPos);
         int jugadorY = Mathf.RoundToInt(jugadorObjetivo.yPos);
         int distReal = Mathf.Max(Mathf.Abs(miPosX - jugadorX), Mathf.Abs(miPosY - jugadorY));
+
         bool tieneLineaVision = !collisionChecker.HayMuroEnRuta(miPosX, miPosY, jugadorX, jugadorY);
 
+        // El rangoVisionDinamico es el rango de visión afectado por el multiplicador de DungeonMaster
         int rangoVisionDinamico = Mathf.RoundToInt(rangoVision * DungeonMaster.EnemyDetectionRadiusMultiplier);
+
         if (distReal > rangoVisionDinamico || !tieneLineaVision)
         {
             Vector2Int patrullaAleatoria = CalcularCasillaAleatoria(miPosX, miPosY);
             SubmitAction(Acciones.Moverse, patrullaAleatoria.x, patrullaAleatoria.y);
             return;
         }
-        bool quiereHuir = hp <= vidaMaxima * umbralHuida;
-        bool valiente = quiereHuir && (UnityEngine.Random.value <= (probContraataque * DungeonMaster.EnemyEscapeMultiplier));
+
+        // Cálculo de la lógica de escape y contraataque
+        bool quiereHuir = hp <= vidaMaxima * (umbralHuida * DungeonMaster.EnemyEscapeMultiplier);
+        bool valiente = quiereHuir && (UnityEngine.Random.value <= (probContraataque * DungeonMaster.EnemyAggressivenessMultiplier));
+
         if (quiereHuir && !valiente)
         {
             Vector2Int rutaEscape = CalcularSiguientePasoHuida(miPosX, miPosY, jugadorObjetivo);
+
             if (rutaEscape.x != -9999)
             {
                 ProcesarPaso(rutaEscape);
@@ -104,11 +119,15 @@ public class EnemyComponent : Entidad
             SubmitAction(Acciones.Atacar, jugadorX, jugadorY);
             return;
         }
+
+        // Si no está a una unidad del jugador, se acerca.
         Vector2Int rutaAvance = CalcularSiguientePasoAStar(miPosX, miPosY, jugadorX, jugadorY);
+
         if (rutaAvance.x != -9999) ProcesarPaso(rutaAvance);
         else
         {
             Vector2Int rutaAlternativa = CalcularCasillaAleatoria(miPosX, miPosY);
+
             ProcesarPaso(rutaAlternativa);
         }
     }
@@ -116,14 +135,18 @@ public class EnemyComponent : Entidad
     private void ProcesarPaso(Vector2Int avance)
     {
         Entidad obstaculo = gameManager.ObtenerEntidadEnCasilla(avance.x, avance.y);
+
         if (obstaculo != null && obstaculo != this) SubmitAction(Acciones.Atacar, avance.x, avance.y);
         else SubmitAction(Acciones.Moverse, avance.x, avance.y);
     }
 
     private Vector2Int CalcularSiguientePasoAStar(int startX, int startY, int targetX, int targetY)
     {
+
         List<Vector2Int> path = Pathfinding.GetAStarPath(new Vector2Int(startX, startY), new Vector2Int(targetX, targetY), collisionChecker, gameManager);
         if (path.Count > 0) return path[0];
+
+        // Equivalente a un "null"
         return new Vector2Int(-9999, -9999);
     }
 
@@ -131,12 +154,17 @@ public class EnemyComponent : Entidad
     {
         int adversarioXPos = Mathf.RoundToInt(adversario.xPos);
         int adversarioYPos = Mathf.RoundToInt(adversario.yPos);
+
         List<Vector2Int> casillaValida = Pathfinding.GetValidAdjacent(new Vector2Int(origenX, origenY), 1, collisionChecker, gameManager);
+
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
+
         int mejorDist = -1;
+
         foreach (var casilla in casillaValida)
         {
             int dist = Mathf.Max(Mathf.Abs(casilla.x - adversarioXPos), Mathf.Abs(casilla.y - adversarioYPos));
+
             if (dist > mejorDist)
             {
                 mejorDist = dist;

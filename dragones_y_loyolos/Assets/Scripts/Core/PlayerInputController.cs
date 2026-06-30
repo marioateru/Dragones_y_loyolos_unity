@@ -25,6 +25,8 @@ public class PlayerInputController : MonoBehaviour
         if (jugador == null || !jugador.EsSuTurno()) return;
 
         var keyboard = Keyboard.current;
+
+        // Interacción con el teclado. Si se pulsa una tecla se oculta la UI de selección.
         if (keyboard != null && (keyboard.wKey.wasPressedThisFrame || keyboard.aKey.wasPressedThisFrame || keyboard.sKey.wasPressedThisFrame || keyboard.dKey.wasPressedThisFrame))
         {
             if (uiInteractiva != null) uiInteractiva.OcultarTodo();
@@ -56,12 +58,14 @@ public class PlayerInputController : MonoBehaviour
         if (mapGrid == null) mapGrid = FindFirstObjectByType<Grid>();
         if (mapGrid == null) return;
 
+        // Calcula la posición del ratón en el mundo de juego.
         Vector2 mousePosScreen = mouse.position.ReadValue();
         Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(new Vector3(mousePosScreen.x, mousePosScreen.y, Mathf.Abs(Camera.main.transform.position.z)));
         
         int objetivoX = Mathf.FloorToInt(mouseWorldPos.x);
         int objetivoY = Mathf.FloorToInt(-mouseWorldPos.y); 
 
+        // Al hacer clic con el botón izquierdo podemos ver si el jugador puede moverse a una posición válida.
         if (mouse.leftButton.wasPressedThisFrame)
         {
             uiInteractiva.OcultarTodo(); 
@@ -69,6 +73,7 @@ public class PlayerInputController : MonoBehaviour
             uiInteractiva.ActivarSeleccionIzquierda(objetivoX, objetivoY, !esAccionValida);
         }
 
+        // Al hacer clic con el botón derecho se evalúan las acciones de casilla y se muestran en botones.
         if (mouse.rightButton.wasPressedThisFrame)
         {
             uiInteractiva.OcultarTodo();
@@ -89,6 +94,7 @@ public class PlayerInputController : MonoBehaviour
                     }
                 }
 
+                // Muestra el menú derecho. Si el jugador pulsa un botón de acción, manda dicha acción por callback y el método la envía al GameManager.
                 uiInteractiva.ActivarMenuDerecho(objetivoX, objetivoY, origenVisual, opcionesAMostrar, rangoInvalido, (accionElegida) => {
                     if (jugador.ValidarIntencion(accionElegida, objetivoX, objetivoY))
                     {

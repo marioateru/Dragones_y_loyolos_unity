@@ -16,6 +16,7 @@ public class ImportadorMazmorras : CustomTmxImporter
         ControladorSala controlador = mapaRaiz.AddComponent<ControladorSala>();
         int idSalaImportada = 1; 
 
+        // Busca y accede al id de la mazmorra
         if (propiedades != null && propiedades.TryGetCustomProperty("idSala", out CustomProperty propiedadId))
         {
             if (int.TryParse(propiedadId.m_Value, out int idParseado)) 
@@ -25,6 +26,7 @@ public class ImportadorMazmorras : CustomTmxImporter
             }
         }
 
+        // Busca y asigna los muros
         Tilemap[] tilemapsMapa = mapaRaiz.GetComponentsInChildren<Tilemap>();
         foreach (Tilemap tilemap in tilemapsMapa)
         {
@@ -47,7 +49,7 @@ public class ImportadorMazmorras : CustomTmxImporter
         
         foreach (SuperObject obj in objetosTiled)
         {
-            // Obtenemos las puertas
+            // Obtenemos las puertas y sus propiedades
             if (obj.m_Type == "Puerta" || obj.m_TiledName == "Puerta")
             {
                 GameObject prefabPuerta = Resources.Load<GameObject>("Prefabs/Puerta_Generica");
@@ -76,7 +78,7 @@ public class ImportadorMazmorras : CustomTmxImporter
                 continue; 
             }
             
-            // Obtenemos las entidades
+            // Obtenemos las entidades de juego y su id
             int idEntidad = -1;
             string propValue = "";
             SuperCustomProperties propiedadesObj = obj.GetComponent<SuperCustomProperties>();
@@ -100,6 +102,7 @@ public class ImportadorMazmorras : CustomTmxImporter
                 int logicX = Mathf.FloorToInt(obj.transform.position.x);
                 int logicY = Mathf.FloorToInt(-obj.transform.position.y);
 
+                // Asignamos las entidades de juego a las salas.
                 if (connection != null)
                 {
                     try 

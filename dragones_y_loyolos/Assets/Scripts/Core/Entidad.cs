@@ -5,6 +5,7 @@ using System;
 public abstract class Entidad : MonoBehaviour
 {
     private const float TILE_CENTER_OFFSET = 0.5f;
+
     [Header("Claves SQL")]
     [field: SerializeField] public int id_entidades { get; private set; } 
     [field: SerializeField] public int id_stats_base { get; private set; } 
@@ -67,12 +68,17 @@ public abstract class Entidad : MonoBehaviour
         
         this.xPos = xInicial;
         this.yPos = yInicial;
+
         ActualizarPosicionVisual();
+
         if (IsDead()) gameObject.SetActive(false);
+
         onEntityCreated?.Invoke(this, EventArgs.Empty);
+
         onStatsChangedByAction?.Invoke(this, new onStatsChangedByActionArgs { entidad = this });
     }
 
+    // Método para toma de decisión automática.
     public abstract void ChooseAction();
 
     protected void SubmitAction(Acciones accion, float targetX, float targetY)
@@ -80,6 +86,7 @@ public abstract class Entidad : MonoBehaviour
         gameManager.RegistrarEleccion(this, accion, Mathf.RoundToInt(targetX), Mathf.RoundToInt(targetY));
     }
 
+    // Método principal que gestiona toda la lógica de acciones.
     public virtual void EjecutarAccion(Acciones accion, int targetX, int targetY)
     {
         switch (accion)
@@ -102,9 +109,11 @@ public abstract class Entidad : MonoBehaviour
                 if (objetivoInteraccion != null) objetivoInteraccion.Interactuar();
                 break;
         }
+
         onStatsChangedByAction?.Invoke(this, new onStatsChangedByActionArgs { entidad = this });
     }
 
+    // Métodos abstractos
     protected abstract void Moverse(int targetX, int targetY);
     protected abstract void Atacar(int targetX, int targetY);
     protected abstract void Defender();

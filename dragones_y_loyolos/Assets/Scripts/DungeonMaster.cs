@@ -14,7 +14,7 @@ public enum NivelDificultad
 public class DungeonMaster : MonoBehaviour
 {    
     public static float EnemyHitMultiplier { get; private set; } = 1.0f;
-    public static float EnemyAttackMultiplier { get; private set; } = 1.0f;
+    public static float EnemyAttackMultiplier { get; private set; } = 1.0f; // En desuso. DamageMultiplier ya se encarga.
     public static float EnemyDamageMultiplier { get; private set; } = 1.0f;
     public static float EnemyDetectionRadiusMultiplier { get; private set; } = 1.0f;
     public static float EnemyAggressivenessMultiplier { get; private set; } = 1.0f;
@@ -23,13 +23,13 @@ public class DungeonMaster : MonoBehaviour
 
     private SQLManager sqlManager;
     private GameManager gameManager;
-    private LectorRedBayesiana redBayesiana;
+    private LectorRedBayesiana redBayesiana; 
     private int lastEvaluatedTimestep = -1;
 
     [SerializeField]
-    private int timestepsToLookBackAt = 50;
+    private int timestepsToLookBackAt = 50; 
     [SerializeField]
-    private int turnsUntilReevaluate = 10;
+    private int turnsUntilReevaluate = 4;  
     
     public static event Action<NivelDificultad, float, string> OnDifficultyChanged;
 
@@ -61,6 +61,7 @@ public class DungeonMaster : MonoBehaviour
         GameManager.OnGameStateSavedOrLoaded -= GameManager_OnGameStateSavedOrLoaded;
     }
 
+    // Evento lanzado cuando el GameManager finaliza un turno T.Recalcula las probabilidades para ajustar el nivel de dificultad.
     private void GameManager_OnGameStateSavedOrLoaded(object sender, int currentTimestep)
     {
         if (sqlManager == null || redBayesiana == null || currentTimestep <= 0) return;
@@ -68,51 +69,55 @@ public class DungeonMaster : MonoBehaviour
 
         lastEvaluatedTimestep = currentTimestep;
 
+        // Nos conectamos
         SQLiteConnection connection = sqlManager.GetConnection();
         if (connection == null) return;
 
         PlayerComponent player = FindFirstObjectByType<PlayerComponent>();
         if (player == null) return;
 
-        int startTimestep = Mathf.Max(1, currentTimestep - timestepsToLookBackAt);
-
-        // --- 1. EXTRACCIÓN DE DATOS Y CLASIFICACIÓN EN BANDAS (Según JSON) ---
+        // Seleccionamos el timestep t-50
+        int startTimestep = Mathf.Max(0, currentTimestep - timestepsToLookBackAt);
         
+        // Obtenemos Banda de Vida
         float hpRatio = (float)player.hp / Mathf.Max(1, player.MaxHpT0);
         string hpBand = "high_81_100";
         if (hpRatio <= 0.20f) hpBand = "critical_1_20";
         else if (hpRatio <= 0.50f) hpBand = "low_21_50";
         else if (hpRatio <= 0.80f) hpBand = "medium_51_80";
 
-        var hpHistory = connection.Query<StatsBaseEntidadesSQL>(
-            "SELECT hp FROM Stats_base_entidades WHERE id_entidades = 1 AND timestep >= ? AND timestep <= ? ORDER BY timestep ASC, subTimestep ASC",
-            startTimestep, currentTimestep);
-        int recentDamage = 0;
-        for (int i = 1; i < hpHistory.Count; i++)
-        {
-            if (hpHistory[i].hp < hpHistory[i - 1].hp) 
-                recentDamage += (hpHistory[i - 1].hp - hpHistory[i].hp);
-        }
+        // Obtenemos Danno reciente
+        int hpInicioVentana = connection.ExecuteScalar<int>(
+            "SELECT hp FROM Stats_base_entidades WHERE id_entidades = 1 AND timestep <= ? ORDER BY timestep DESC LIMIT 1", 
+            startTimestep);
+        
+        if (hpInicioVentana <= 0) hpInicioVentana = player.MaxHpT0;
+        
+        int recentDamage = Mathf.Max(0, hpInicioVentana - player.hp);
+        
         string damageBand = "none";
         if (recentDamage >= 1 && recentDamage <= 10) damageBand = "low_1_10";
         else if (recentDamage >= 11 && recentDamage <= 30) damageBand = "medium_11_30";
         else if (recentDamage >= 31) damageBand = "high_31_plus";
 
+        // Buscamos los enemigos que en total ha eliminado el jugador
         int kills = connection.ExecuteScalar<int>(
-            "SELECT COUNT(DISTINCT id_entidades) FROM Stats_base_entidades WHERE id_entidades != 1 AND hp <= 0 AND timestep <= ?", 
-            currentTimestep);
+            "SELECT COUNT(DISTINCT id_entidades) FROM Stats_base_entidades WHERE id_entidades != 1 AND hp <= 0 AND id_entidades IN (SELECT id_entidades FROM Stats_base_entidades WHERE hp > 0)");
+        
         string killsBand = "0";
         if (kills >= 1 && kills <= 5) killsBand = "1_5";
         else if (kills >= 6 && kills <= 25) killsBand = "6_25";
         else if (kills >= 26 && kills <= 75) killsBand = "26_75";
         else if (kills >= 76) killsBand = "76_plus";
 
+        // Miramos en qué fase de la partida se encuentra el jugador temporalmente.
         string progressBand = "start_0_50";
         if (currentTimestep > 50 && currentTimestep <= 250) progressBand = "early_51_250";
         else if (currentTimestep > 250 && currentTimestep <= 1000) progressBand = "mid_251_1000";
         else if (currentTimestep > 1000 && currentTimestep <= 2500) progressBand = "late_1001_2500";
         else if (currentTimestep > 2500) progressBand = "very_late_2501_plus";
 
+        // Miramos la sala en la que se encuentra el jugador.
         int salaId = gameManager.salaActual != null ? gameManager.salaActual.idSalaActual : 0;
         string roomBand = "room_0_1";
         if (salaId == 2) roomBand = "room_2";
@@ -120,31 +125,33 @@ public class DungeonMaster : MonoBehaviour
         else if (salaId == 4) roomBand = "room_4";
         else if (salaId >= 5) roomBand = "room_5_plus";
 
+        int lastTurn = currentTimestep - 1;
+
+        // Miramos cuántos enemigos han atacado en el turno anterior
         int enemyAttacks = connection.ExecuteScalar<int>(
             "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades != 1 AND id_acciones = 'Atacar' AND timestep = ?", 
-            currentTimestep);
+            lastTurn);
         string pressureBand = "none";
         if (enemyAttacks == 1) pressureBand = "one";
         else if (enemyAttacks == 2 || enemyAttacks == 3) pressureBand = "two_three";
         else if (enemyAttacks >= 4) pressureBand = "four_plus";
 
+        // Miramos cuántas acciones han tomado los enemigos en el turno anterior
         int enemyActivity = connection.ExecuteScalar<int>(
             "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades != 1 AND timestep = ?", 
-            currentTimestep);
+            lastTurn);
         string activityBand = "none";
         if (enemyActivity >= 1 && enemyActivity <= 5) activityBand = "low_1_5";
         else if (enemyActivity >= 6 && enemyActivity <= 15) activityBand = "medium_6_15";
         else if (enemyActivity >= 16) activityBand = "high_16_plus";
 
+        // Obtenemos las veces que el jugador se ha curado
         int playerConsume = connection.ExecuteScalar<int>(
             "SELECT COUNT(*) FROM Tiempo_acciones_entidades WHERE id_entidades = 1 AND id_acciones = 'Consumir' AND timestep = ?", 
-            currentTimestep);
+            lastTurn);
         string consumptionBand = playerConsume > 0 ? "consume" : "no_consume";
 
-
-        // --- 2. APLICACIÓN DE LA ECUACIÓN (6): Inferencia Bayesiana (Naive Bayes) ---
-        // P(R=r | X) = ( P(R=r) * Π P(X_j | R=r) ) / Σ [ P(R=r') * Π P(X_j | R=r') ]
-        
+        // Resolvemos la ecuación de Bayes.        
         double[] numeradorProbabilidades = new double[4];
         double denominadorSumaTotal = 0.0;
 
@@ -152,10 +159,8 @@ public class DungeonMaster : MonoBehaviour
         {
             string riesgo = estadosRiesgo[i];
 
-            // P(R=r)
             double probConjunta = redBayesiana.ObtenerPrior(riesgo);
             
-            // Π P(X_j | R=r)
             probConjunta *= redBayesiana.ObtenerProbabilidad("player_hp_band", riesgo, hpBand);
             probConjunta *= redBayesiana.ObtenerProbabilidad("recent_damage_band", riesgo, damageBand);
             probConjunta *= redBayesiana.ObtenerProbabilidad("kills_so_far_band", riesgo, killsBand);
@@ -169,34 +174,34 @@ public class DungeonMaster : MonoBehaviour
             denominadorSumaTotal += probConjunta; 
         }
 
-        // Normalización posterior
+        // Calculamos las probabilidades
         double pSafe = numeradorProbabilidades[0] / denominadorSumaTotal;
         double pModerate = numeradorProbabilidades[1] / denominadorSumaTotal;
         double pHigh = numeradorProbabilidades[2] / denominadorSumaTotal;
         double pDeath = numeradorProbabilidades[3] / denominadorSumaTotal;
 
-        // --- 3. APLICACIÓN DE LA ECUACIÓN (8): Puntuación Continua de Riesgo ---
-        // risk_score = P(R = death) + P(R = high_damage) + 0.5 * P(R = moderate_damage)
+        // Aplicamos la ecucación
         float riskScore = (float)(pDeath + pHigh + (0.5 * pModerate));
 
-        // --- 4. UMBRALES DE DIFICULTAD (Tabla 12) ---
+        // Seleccionamos la dificultad
         NivelDificultad currentDifficulty;
         if (riskScore >= 0.70f) currentDifficulty = NivelDificultad.D1_asistido_muy_facil;
         else if (riskScore >= 0.40f && riskScore < 0.70f) currentDifficulty = NivelDificultad.D2_facil;
         else if (riskScore >= 0.18f && riskScore < 0.40f) currentDifficulty = NivelDificultad.D3_normal;
         else currentDifficulty = NivelDificultad.D4_dificil;
 
+        // Aplicamos los multiplicadores
         ApplyMultipliers(currentDifficulty);
         
         string desglose = $"<b>Probabilidades Naive Bayes:</b>\n" +
                           $"Muerte: {(pDeath*100):F2}%\n" +
-                          $"Daño Alto: {(pHigh*100):F2}%\n" +
-                          $"Daño Mod: {(pModerate*100):F2}%\n" +
+                          $"Danno Alto: {(pHigh*100):F2}%\n" +
+                          $"Danno Mod: {(pModerate*100):F2}%\n" +
                           $"Seguro: {(pSafe*100):F2}%\n" +
                           $"---------------------\n" +
-                          $"<b>Bandas Extraídas:</b>\n" +
+                          $"<b>Bandas Extraidas:</b>\n" +
                           $"HP: {hpBand}\n" +
-                          $"Daño 50T: {damageBand}\n" +
+                          $"Danno 50T: {damageBand}\n" +
                           $"Bajas: {killsBand}";
 
         OnDifficultyChanged?.Invoke(currentDifficulty, riskScore, desglose);
@@ -248,7 +253,8 @@ public class LectorRedBayesiana
 
     public double ObtenerProbabilidad(string variable, string estadoRiesgo, string bandaValor)
     {
-        int indiceVariable = contenidoJson.IndexOf($"\"{variable}\"");
+        int indiceCPT = contenidoJson.IndexOf("\"cpts_feature_given_risk\"");
+        int indiceVariable = contenidoJson.IndexOf($"\"{variable}\"", indiceCPT);
         int indiceRiesgo = contenidoJson.IndexOf($"\"{estadoRiesgo}\"", indiceVariable);
         int indiceBanda = contenidoJson.IndexOf($"\"{bandaValor}\"", indiceRiesgo);
         return ExtraerNumero(indiceBanda);
@@ -264,9 +270,18 @@ public class LectorRedBayesiana
         
         int final = (coma != -1 && coma < llave) ? coma : llave;
         
-        string numeroString = contenidoJson.Substring(dosPuntos + 1, final - (dosPuntos + 1)).Trim();
+        string numeroBruto = contenidoJson.Substring(dosPuntos + 1, final - (dosPuntos + 1));
+        string numeroLimpio = "";
         
-        if (double.TryParse(numeroString, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out double valor))
+        foreach (char c in numeroBruto)
+        {
+            if (char.IsDigit(c) || c == '.' || c == 'e' || c == 'E' || c == '-' || c == '+')
+            {
+                numeroLimpio += c;
+            }
+        }
+
+        if (double.TryParse(numeroLimpio, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double valor))
         {
             return valor;
         }

@@ -20,6 +20,7 @@ public class PuertaMazmorra : MonoBehaviour
             if (collider2D != null)
             {
                 Vector3 localCenter = sala.transform.InverseTransformPoint(collider2D.bounds.center);
+
                 xPos = Mathf.FloorToInt(localCenter.x);
                 yPos = Mathf.FloorToInt(-(localCenter.y + TILE_CENTER_OFFSET));
             }
@@ -30,10 +31,12 @@ public class PuertaMazmorra : MonoBehaviour
             }
             
             sala.RegistrarPuerta(xPos, yPos, this);
+
             Debug.Log($"<color=cyan>[Puerta]</color> Registrada en casilla: ({xPos}, {yPos})");
         }
 
         Collider2D collider2DToDestroy = GetComponent<Collider2D>();
+        
         if (collider2DToDestroy != null) Destroy(collider2DToDestroy);
     }
 }

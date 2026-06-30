@@ -13,6 +13,7 @@ public class SQLManager : MonoBehaviour
 
     void Awake()
     {
+        // Permite crear partidas de prueba sin pasar por la escena principal
         if (string.IsNullOrEmpty(GameSession.dbActiva)) GameSession.dbActiva = "Partida_Test_Debug.db";
 
         string dbPath = string.Format("{0}/{1}", Application.streamingAssetsPath, "dragones_y_loyolos.db"); 
@@ -22,15 +23,18 @@ public class SQLManager : MonoBehaviour
         if (forzarReinicioBD && System.IO.File.Exists(filepath) && GameSession.dbActiva == "Partida_Test_Debug.db")
         {
             System.IO.File.Delete(filepath);
+
             Debug.Log("[SQLManager] BD de test borrada. Cargando limpia.");
         }
         #endif
 
-        if (!System.IO.File.Exists(filepath)) {
+        if (!System.IO.File.Exists(filepath)) 
+        {
             System.IO.File.Copy(dbPath, filepath);
         }
 
         connection = new SQLiteConnection(filepath, SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create);
+        
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_sala ON Entidades_sala_proposito_contenido (id_sala_proposito_contenido, timestep);");
         connection.Execute("CREATE INDEX IF NOT EXISTS idx_entidades_tiempo ON Entidades_sala_proposito_contenido (id_entidades, timestep, subTimestep);");
     }
@@ -54,6 +58,7 @@ public class SQLManager : MonoBehaviour
         return ultimoTimestep != null ? ultimoTimestep.timestep : 0;
     }
 
+    // Obtiene el id de la sala donde estuvo el jugador en el timestep X
     public int ObtenerSalaDelJugador(int timestep, int salaPorDefecto)
     {
         try
@@ -74,12 +79,13 @@ public class SQLManager : MonoBehaviour
         }
         catch (System.Exception exception)
         {
-            Debug.LogWarning("[SQLManager] No se pudo obtener la sala del jugador en el timestep. Se usará la por defecto. Error: " + exception.Message);
+            Debug.LogWarning("[SQLManager] No se pudo obtener la sala del jugador en el timestep. Se usará la sala por defecto. Error: " + exception.Message);
         }
         
         return salaPorDefecto;
     }
 
+    // Carga las entidades, comprueba que existe y le inyecta los datos.
     public void CargarDatosDeEntidad(Entidad entidad, int id_entidad, int timestepInicial)
     {
         var estadoStats = connection.Query<StatsBaseEntidadesSQL>(
@@ -87,7 +93,7 @@ public class SQLManager : MonoBehaviour
             id_entidad, timestepInicial).FirstOrDefault();
 
         if (estadoStats == null) {
-            Debug.LogWarning($"[SQLManager] Entidad {id_entidad} sin registro en Stats_base_entidades. Se inyecta un molde vacío por seguridad.");
+            Debug.LogWarning($"[SQLManager] Entidad de juego {id_entidad} sin registro en Stats_base_entidades. Se usarán stats vacíos por seguridad.");
             estadoStats = new StatsBaseEntidadesSQL();
         }
 
@@ -108,13 +114,14 @@ public class SQLManager : MonoBehaviour
 
     public int ObtenerStatsDeEntidadEnTimestepT(int id_entidad, int timestep)
     {
-        var vinculo = connection.Query<StatsBaseEntidadesSQL>(
+        var vinculoConnection = connection.Query<StatsBaseEntidadesSQL>(
             "SELECT id_stats_base FROM Stats_base_entidades WHERE id_entidades = ? AND timestep <= ? ORDER BY timestep DESC, subTimestep DESC LIMIT 1", 
             id_entidad, timestep).FirstOrDefault();
 
-        return vinculo != null ? vinculo.id_stats_base : 1; 
+        return vinculoConnection != null ? vinculoConnection.id_stats_base : 1; 
     }
 
+    // Obtiene todas las entidades en una sala y un timestep.
     public List<EntidadesSalaPropositoContenidoSQL> ObtenerEntidadesEnSala(int idSala, int timestep)
     {
         string query = @"
@@ -131,6 +138,7 @@ public class SQLManager : MonoBehaviour
         return connection.Query<EntidadesSalaPropositoContenidoSQL>(query, timestep, idSala).ToList();
     }
 
+    // Comprueba si la entidad es jugador.
     public bool EsJugador(int id_entidad)
     {
         var jugador = connection.Query<JugadoresSQL>("SELECT id_entidades FROM Jugadores WHERE id_entidades = ? LIMIT 1", id_entidad).FirstOrDefault();
@@ -141,16 +149,17 @@ public class SQLManager : MonoBehaviour
     {
         if (esJugador) 
         {
-            var jug = connection.Query<JugadoresSQL>("SELECT id_jugadores FROM Jugadores WHERE id_entidades = ?", id_entidad).FirstOrDefault();
-            return jug != null ? jug.id_jugadores : "JugadorBase";
+            var jugador = connection.Query<JugadoresSQL>("SELECT id_jugadores FROM Jugadores WHERE id_entidades = ?", id_entidad).FirstOrDefault();
+            return jugador != null ? jugador.id_jugadores : "JugadorBase";
         } 
         else 
         {
-            var mon = connection.Query<MonstruosSQL>("SELECT id_monstruos FROM Monstruos WHERE id_entidades = ?", id_entidad).FirstOrDefault();
-            return mon != null ? mon.id_monstruos : "EnemigoBase";
+            var monstruo = connection.Query<MonstruosSQL>("SELECT id_monstruos FROM Monstruos WHERE id_entidades = ?", id_entidad).FirstOrDefault();
+            return monstruo != null ? monstruo.id_monstruos : "EnemigoBase";
         }
     }
 
+    // Guarda la lista de acciones dada por el gamemanager en memoria una a una.
     public void GuardarHistorialDeAcciones(List<AccionEnMemoria> colaDeAcciones, int idSalaActual)
     {
         connection.BeginTransaction();
@@ -200,12 +209,14 @@ public class SQLManager : MonoBehaviour
         }
     }
 
+    // Mueve el jugador a una nueva sala.
     public void MoverEntidadASala(int id_entidad, int id_sala, int destX, int destY, int timestep)
     {
         string queryPos = @"INSERT OR REPLACE INTO Entidades_sala_proposito_contenido (timestep, subTimestep, id_entidades, id_sala_proposito_contenido, Xpos, Ypos) VALUES (?, ?, ?, ?, ?, ?)";
         connection.Execute(queryPos, timestep, 0, id_entidad, id_sala, destX, destY);
     }
 
+    // Guarda el estado actual de las entidades en SQL.
     public void GuardarEstadoMundoActual(List<Entidad> entidades, int idSala, int timestep)
     {
         connection.BeginTransaction();
@@ -226,10 +237,12 @@ public class SQLManager : MonoBehaviour
         catch (System.Exception exception)
         {
             connection.Rollback();
-            Debug.LogError("[SQLManager] Error al congelar el estado de la mazmorra: " + exception.Message);
+
+            Debug.LogError("[SQLManager] Error al guardar el estado de la mazmorra: " + exception.Message);
         }
     }
 
+    // Obtiene las acciones de las entidades. En caso de que no tenga acciones, le da unas predeterminadas.
     public List<Acciones> ObtenerAccionesPermitidas(int idEntidad)
     {
         List<Acciones> acciones = new List<Acciones>();
@@ -255,7 +268,7 @@ public class SQLManager : MonoBehaviour
         }
         catch (System.Exception exception)
         {
-            Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad {idEntidad}: {exception.Message}");
+            Debug.LogError($"[SQLManager] Error al cargar acciones de la entidad de juego {idEntidad}: {exception.Message}");
         }
 
         if (acciones.Count == 0)
@@ -272,20 +285,21 @@ public class SQLManager : MonoBehaviour
     {
         try 
         {
-            var registro = connection.Query<StatsBaseEntidadesSQL>(
+            var registroVida = connection.Query<StatsBaseEntidadesSQL>(
                 "SELECT hp FROM Stats_base_entidades WHERE id_entidades = ? ORDER BY timestep ASC, subTimestep ASC LIMIT 1", 
                 id_entidad).FirstOrDefault();
                 
-            if (registro != null) return registro.hp;
+            if (registroVida != null) return registroVida.hp;
         }
         catch (System.Exception exception)
         {
-            Debug.LogError($"[SQLManager] Error al obtener la vida máxima de la entidad {id_entidad}: {exception.Message}");
+            Debug.LogError($"[SQLManager] Error al obtener la vida máxima de la entidad de juego {id_entidad}: {exception.Message}");
         }
         
         return 10;
     }
 
+    // Dado un timestep, elimina todas las entradas que le prosigan.
     public void RollbackATimestep(int targetTimestep)
     {
         connection.Execute("DELETE FROM Entidades_sala_proposito_contenido WHERE timestep > ?", targetTimestep);
@@ -293,16 +307,17 @@ public class SQLManager : MonoBehaviour
         connection.Execute("DELETE FROM Stats_base_entidades WHERE timestep > ?", targetTimestep);
     }
 
+    // Busca el último timestep en el que la vida del jugador fue superior a 0.
     public int ObtenerUltimoTimestepConVida()
     {
         var jugador = connection.Query<JugadoresSQL>("SELECT id_entidades FROM Jugadores LIMIT 1").FirstOrDefault();
         if (jugador != null)
         {
-            var registro = connection.Query<StatsBaseEntidadesSQL>(
+            var registroUltimoTimestepConVida = connection.Query<StatsBaseEntidadesSQL>(
                 "SELECT timestep FROM Stats_base_entidades WHERE id_entidades = ? AND hp > 0 ORDER BY timestep DESC, subTimestep DESC LIMIT 1",
                 jugador.id_entidades).FirstOrDefault();
                 
-            if (registro != null) return registro.timestep;
+            if (registroUltimoTimestepConVida != null) return registroUltimoTimestepConVida.timestep;
         }
         return 1;
     }

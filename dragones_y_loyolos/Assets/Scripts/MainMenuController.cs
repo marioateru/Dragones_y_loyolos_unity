@@ -16,8 +16,6 @@ public class MainMenuController : MonoBehaviour
     [Header("UI Cargar")]
     public Transform contenedorPartidas;
     public GameObject prefabBotonPartida;
-    
-    [Tooltip("Arrastra aquí el botón de 'Cargar Partida' del panel principal para ocultarlo si no hay partidas")]
     public Button botonAbrirMenuCargar; 
 
     private string prefijoGuardado = "Save_";
@@ -27,6 +25,7 @@ public class MainMenuController : MonoBehaviour
         Time.timeScale = 1; 
         
         string[] archivosBD = Directory.GetFiles(Application.persistentDataPath, prefijoGuardado + "*.db");
+
         if (botonAbrirMenuCargar != null)
         {
             botonAbrirMenuCargar.gameObject.SetActive(archivosBD.Length > 0);
@@ -35,6 +34,7 @@ public class MainMenuController : MonoBehaviour
         if (ML_Core.IsMLMode)
         {
             Debug.Log("<color=yellow>[Menu Principal]</color> Modo ML. Iniciando simulación automáticamente...");
+
             ConfirmarNuevaPartida();
         }
     }
@@ -45,6 +45,7 @@ public class MainMenuController : MonoBehaviour
         panelNuevaPartida.SetActive(true);
     }
 
+    // Detecta el nombre (o la ausencia del mismo) en un inputField de unity y lo asigna a la partida; crea un archivo de guardado con dicho nombre.
     public void ConfirmarNuevaPartida()
     {
         string nombreEnCarpetaBD = "";
@@ -53,6 +54,8 @@ public class MainMenuController : MonoBehaviour
         if (!ML_Core.IsMLMode)
         {
             nombreEnJuego = inputNombrePartida.text;
+
+            // Por si no se pone ningún nombre en el inputField
             if (string.IsNullOrWhiteSpace(nombreEnJuego)) 
             {
                 nombreEnJuego = "D&L " + DateTime.Now.ToString("yyyy-MM-dd");
@@ -60,6 +63,7 @@ public class MainMenuController : MonoBehaviour
 
             nombreEnCarpetaBD = prefijoGuardado + DateTime.Now.Ticks + ".db";
             
+            // Playerprefs para mostrar el nombre del save en menú
             PlayerPrefs.SetString("DisplayName_" + nombreEnCarpetaBD, nombreEnJuego);
             PlayerPrefs.SetString("Date_" + nombreEnCarpetaBD, DateTime.Now.ToString("dd/MM/yyyy - HH:mm:ss"));
             PlayerPrefs.Save();
@@ -73,6 +77,7 @@ public class MainMenuController : MonoBehaviour
             nombreEnJuego = GameSession.nombrePartidaActiva;
         }
 
+        // Copia la BD a la carpeta de Persistent Data.
         string plantillaPath = Path.Combine(Application.streamingAssetsPath, "dragones_y_loyolos.db");
         string nuevoPath = Path.Combine(Application.persistentDataPath, nombreEnCarpetaBD);
         
@@ -81,6 +86,7 @@ public class MainMenuController : MonoBehaviour
         SceneManager.LoadScene("GameScene"); 
     }
 
+    // Muestra el menú de carga de partida, instancia dinámicamente un prefab que muestra el nombre de la partida, permite acceder y borrarla.
     public void MostrarCargarPartida()
     {
         panelPrincipal.SetActive(false);
@@ -89,13 +95,16 @@ public class MainMenuController : MonoBehaviour
         foreach (Transform child in contenedorPartidas) 
         {
             child.SetParent(null);
+
             Destroy(child.gameObject);
         }
 
+        // Carga todos los archivos de guardado, excluyendo las partidas de modo ML.
         string[] archivosBD = Directory.GetFiles(Application.persistentDataPath, prefijoGuardado + "*.db");
         
         foreach (string archivo in archivosBD)
         {
+            // Muestra los nombres en pantalla.
             string nombreArchivo = Path.GetFileName(archivo);
             string nombreMostrar = PlayerPrefs.GetString("DisplayName_" + nombreArchivo, "Partida Desconocida");
             string fechaGuardado = PlayerPrefs.GetString("Date_" + nombreArchivo, "");
@@ -103,7 +112,10 @@ public class MainMenuController : MonoBehaviour
             GameObject btnObjeto = Instantiate(prefabBotonPartida, contenedorPartidas);
             
             string textoFinal = $"{nombreMostrar} -- <size=36>{fechaGuardado}</size>";
+
+            // Dependiendo si el componente de escena es un Unity.Input o un TMPro.TextMeshProUGUI coge un caso u otro.
             var textoLegacy = btnObjeto.GetComponentInChildren<Text>();
+
             if (textoLegacy != null) 
             {
                 textoLegacy.text = textoFinal;
@@ -111,15 +123,19 @@ public class MainMenuController : MonoBehaviour
             else
             {
                 var textoTMP = btnObjeto.GetComponentInChildren<TMPro.TextMeshProUGUI>();
+
                 if (textoTMP != null) textoTMP.text = textoFinal;
             }
             
             Button btnCargar = btnObjeto.GetComponent<Button>();
+
+            // A cada botón le añade un listener automáticamente para cargar archivo y GameScene.
             if (btnCargar != null)
             {
                 btnCargar.onClick.AddListener(() => {
                     GameSession.dbActiva = nombreArchivo;
                     GameSession.nombrePartidaActiva = nombreMostrar;
+
                     SceneManager.LoadScene("GameScene");
                 });
             }
@@ -128,6 +144,8 @@ public class MainMenuController : MonoBehaviour
             if (hijoBorrar != null)
             {
                 Button btnBorrar = hijoBorrar.GetComponent<Button>();
+
+                // A cada botón le añade un listener automáticamente para eliminar archivo y sus playerprefs.
                 if (btnBorrar != null)
                 {
                     btnBorrar.onClick.AddListener(() => {
@@ -141,6 +159,7 @@ public class MainMenuController : MonoBehaviour
                         if (Directory.GetFiles(Application.persistentDataPath, prefijoGuardado + "*.db").Length == 0)
                         {
                             if (botonAbrirMenuCargar != null) botonAbrirMenuCargar.gameObject.SetActive(false);
+
                             VolverAlMenuPrincipal();
                         }
                     });

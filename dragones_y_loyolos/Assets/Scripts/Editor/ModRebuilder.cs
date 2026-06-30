@@ -8,7 +8,8 @@ public class ModRebuilder : EditorWindow
 {
     [MenuItem("Modding Tools/Reconstruir Base de Datos de Niveles")]
     public static void RebuildDatabase()
-    {
+    {   
+        // Abrimos conexión y limpiamos la relación Entidades_sala_proposito_contenido y tabla Sala_proposito_contenido
         Debug.Log("[Rebuilder] Iniciando inserción de entidades en salas");
 
         string dbPath = Application.streamingAssetsPath + "/dragones_y_loyolos.db";
@@ -22,6 +23,7 @@ public class ModRebuilder : EditorWindow
         int entidadesColocadas = 0;
         int salasRegistradas = 0;
 
+        // Accedemos uno a uno a todos los mapas (mazmorras), importamos su id y lo registramos
         foreach (var mapa in mapas)
         {
             ControladorSala salaImportada = mapa.GetComponent<ControladorSala>();
@@ -35,8 +37,10 @@ public class ModRebuilder : EditorWindow
             salasRegistradas++;
             Debug.Log($"[Rebuilder] Sala {salaImportada.idSalaActual} construida en el SQL.");
 
+            // Vemos los elementos dentro del mapa
             SuperObject[] objetosSalaImportada = mapa.GetComponentsInChildren<SuperObject>();
             
+            // Acceedemos a las entidades, buscamos su ID; buscamos al jugador.
             foreach (var objeto in objetosSalaImportada)
             {
                 var propiedadesObjeto = objeto.GetComponent<SuperCustomProperties>();
@@ -57,6 +61,7 @@ public class ModRebuilder : EditorWindow
                         }
                     }
 
+                    // Asignamos la entidad en la relación y tablas anteriormente mencionadas
                     if (idEntidad > 0)
                     {
                         if (idEntidad == 1) 
@@ -85,6 +90,7 @@ public class ModRebuilder : EditorWindow
         
         connection.Close();
 
+        // Hacemos una nueva copia de la base de datos en la carpeta de saves (Persistent Data)
         string persistentPath = Application.persistentDataPath + "/dragones_y_loyolos.db";
         File.Copy(dbPath, persistentPath, true);
 

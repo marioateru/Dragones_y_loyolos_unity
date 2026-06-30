@@ -9,7 +9,8 @@ public static class Pathfinding
     private static Dictionary<Vector2Int, int> gScore = new Dictionary<Vector2Int, int>(500);
     private static Dictionary<Vector2Int, int> fScore = new Dictionary<Vector2Int, int>(500);
 
-    public static List<Vector2Int> GetAStarPath(Vector2Int start, Vector2Int target, TileCollisionChecker col, GameManager gm)
+    // Ejecuta el algoritmo a* para determinar la ruta más óptima entre un inicio (start) y objetivo (target). Toma en cuenta muros y puertas.
+    public static List<Vector2Int> GetAStarPath(Vector2Int start, Vector2Int target, TileCollisionChecker collisionChecker, GameManager gameManager)
     {
         List<Vector2Int> path = new List<Vector2Int>();
         if (start == target) return path;
@@ -21,14 +22,18 @@ public static class Pathfinding
         fScore.Clear();
 
         openList.Add(start);
+
         gScore[start] = 0;
+
         fScore[start] = GetHeuristic(start, target);
 
         int loops = 0;
         while (openList.Count > 0 && loops < 5000)
         {
             loops++;
+
             Vector2Int current = openList[0];
+
             int lowestScore = fScore.GetValueOrDefault(current, int.MaxValue);
             
             for (int i = 1; i < openList.Count; i++)
@@ -43,14 +48,19 @@ public static class Pathfinding
 
             if (current == target)
             {
-                Vector2Int curr = target;
-                while (cameFrom.ContainsKey(curr))
+                Vector2Int currentPoint = target;
+
+                while (cameFrom.ContainsKey(currentPoint))
                 {
-                    path.Add(curr);
-                    curr = cameFrom[curr];
-                    if (curr == start) break;
+                    path.Add(currentPoint);
+
+                    currentPoint = cameFrom[currentPoint];
+
+                    if (currentPoint == start) break;
                 }
+
                 path.Reverse();
+
                 return path;
             }
 
@@ -64,21 +74,25 @@ public static class Pathfinding
                     if (x == 0 && y == 0) continue;
 
                     Vector2Int neighbor = new Vector2Int(current.x + x, current.y + y);
+
                     if (closedList.Contains(neighbor)) continue;
 
                     if (Mathf.Abs(x) == 1 && Mathf.Abs(y) == 1)
                     {
-                        if (col.HayMuroEnRuta(current.x, current.y, current.x + x, current.y) || 
-                            col.HayMuroEnRuta(current.x, current.y, current.x, current.y + y)) 
+                        if (collisionChecker.HayMuroEnRuta(current.x, current.y, current.x + x, current.y) || 
+                            collisionChecker.HayMuroEnRuta(current.x, current.y, current.x, current.y + y)) 
                             continue;
                     }
 
-                    bool isWall = col.HayMuroEnRuta(current.x, current.y, neighbor.x, neighbor.y);
-                    bool isDoor = gm.salaActual != null && gm.salaActual.ObtenerPuerta(neighbor.x, neighbor.y) != null;
+                    bool isWall = collisionChecker.HayMuroEnRuta(current.x, current.y, neighbor.x, neighbor.y);
+
+                    bool isDoor = gameManager.salaActual != null && gameManager.salaActual.ObtenerPuerta(neighbor.x, neighbor.y) != null;
+
                     if (isWall && !isDoor) continue;
 
                     int moveCost = 10;
-                    if (gm.ObtenerEntidadEnCasilla(neighbor.x, neighbor.y) != null && neighbor != target) moveCost += 100;
+
+                    if (gameManager.ObtenerEntidadEnCasilla(neighbor.x, neighbor.y) != null && neighbor != target) moveCost += 100;
 
                     int tentativeG = gScore.GetValueOrDefault(current, 0) + moveCost;
 
@@ -94,7 +108,8 @@ public static class Pathfinding
         return path;
     }
 
-    public static List<Vector2Int> GetBFSReachable(Vector2Int start, int maxSteps, TileCollisionChecker col)
+    // Ejecuta el algoritmo BFS para determinar la ruta más óptima. Toma en cuenta muros.
+    public static List<Vector2Int> GetBFSReachable(Vector2Int start, int maxSteps, TileCollisionChecker collisionChecker)
     {
         List<Vector2Int> reachable = new List<Vector2Int>();
         Queue<Vector2Int> queue = new Queue<Vector2Int>();
@@ -104,31 +119,34 @@ public static class Pathfinding
         visited.Add(start);
 
         int distance = 0;
+
         while(queue.Count > 0 && distance < maxSteps)
         {
             int levelSize = queue.Count;
             for(int i = 0; i < levelSize; i++)
             {
-                Vector2Int curr = queue.Dequeue();
-                reachable.Add(curr);
+                Vector2Int currentPosition = queue.Dequeue();
 
-                for (int dx = -1; dx <= 1; dx++)
+                reachable.Add(currentPosition);
+
+                for (int distanceX = -1; distanceX <= 1; distanceX++)
                 {
-                    for (int dy = -1; dy <= 1; dy++)
+                    for (int distanceY = -1; distanceY <= 1; distanceY++)
                     {
-                        if (dx == 0 && dy == 0) continue;
-                        Vector2Int neighbor = new Vector2Int(curr.x + dx, curr.y + dy);
+                        if (distanceX == 0 && distanceY == 0) continue;
+
+                        Vector2Int neighbor = new Vector2Int(currentPosition.x + distanceX, currentPosition.y + distanceY);
                         
                         if (!visited.Contains(neighbor))
                         {
-                            if (Mathf.Abs(dx) == 1 && Mathf.Abs(dy) == 1)
+                            if (Mathf.Abs(distanceX) == 1 && Mathf.Abs(distanceY) == 1)
                             {
-                                if (col.HayMuroEnRuta(curr.x, curr.y, curr.x + dx, curr.y) || 
-                                    col.HayMuroEnRuta(curr.x, curr.y, curr.x, curr.y + dy)) 
+                                if (collisionChecker.HayMuroEnRuta(currentPosition.x, currentPosition.y, currentPosition.x + distanceX, currentPosition.y) || 
+                                    collisionChecker.HayMuroEnRuta(currentPosition.x, currentPosition.y, currentPosition.x, currentPosition.y + distanceY)) 
                                     continue;
                             }
 
-                            if (!col.HayMuroEnRuta(curr.x, curr.y, neighbor.x, neighbor.y))
+                            if (!collisionChecker.HayMuroEnRuta(currentPosition.x, currentPosition.y, neighbor.x, neighbor.y))
                             {
                                 visited.Add(neighbor);
                                 queue.Enqueue(neighbor);
@@ -142,47 +160,53 @@ public static class Pathfinding
         return reachable;
     }
 
-    public static List<Vector2Int> GetValidAdjacent(Vector2Int center, int range, TileCollisionChecker col, GameManager gm)
+    // Determina casillas válidas alrededor de un punto. Toma en cuenta muros y puertas.
+    public static List<Vector2Int> GetValidAdjacent(Vector2Int center, int range, TileCollisionChecker collisionChecker, GameManager gameManager)
     {
-        List<Vector2Int> valid = new List<Vector2Int>();
+        List<Vector2Int> validTiles = new List<Vector2Int>();
+
         for (int x = -range; x <= range; x++)
         {
             for (int y = -range; y <= range; y++)
             {
                 if (x == 0 && y == 0) continue;
+
                 Vector2Int target = new Vector2Int(center.x + x, center.y + y);
                 
                 if (Mathf.Abs(x) == 1 && Mathf.Abs(y) == 1)
                 {
-                    if (col.HayMuroEnRuta(center.x, center.y, center.x + x, center.y) || 
-                        col.HayMuroEnRuta(center.x, center.y, center.x, center.y + y)) 
+                    if (collisionChecker.HayMuroEnRuta(center.x, center.y, center.x + x, center.y) || 
+                        collisionChecker.HayMuroEnRuta(center.x, center.y, center.x, center.y + y)) 
                         continue;
                 }
 
-                bool isWall = col.HayMuroEnRuta(center.x, center.y, target.x, target.y);
-                bool isDoor = gm.salaActual != null && gm.salaActual.ObtenerPuerta(target.x, target.y) != null;
+                bool isWall = collisionChecker.HayMuroEnRuta(center.x, center.y, target.x, target.y);
+
+                bool isDoor = gameManager.salaActual != null && gameManager.salaActual.ObtenerPuerta(target.x, target.y) != null;
                 
                 if (isWall && !isDoor) continue;
-                if (gm.ObtenerEntidadEnCasilla(target.x, target.y) != null) continue;
+                if (gameManager.ObtenerEntidadEnCasilla(target.x, target.y) != null) continue;
 
-                valid.Add(target);
+                validTiles.Add(target);
             }
         }
-        return valid;
+        return validTiles;
     }
 
-    public static Vector2Int GetRandomValidTile(Vector2Int center, TileCollisionChecker col, GameManager gm)
+    // Selecciona un conjunto de casillas aleatorias alrededor de un centro y devuelve aleatoriamente una de estas.
+    public static Vector2Int GetRandomValidTile(Vector2Int center, TileCollisionChecker collisionChecker, GameManager gameManager)
     {
-        List<Vector2Int> valid = GetValidAdjacent(center, 1, col, gm);
+        List<Vector2Int> validTiles = GetValidAdjacent(center, 1, collisionChecker, gameManager);
         
-        if (valid.Count > 0) 
+        if (validTiles.Count > 0) 
         {
-            int randomIndex = UnityEngine.Random.Range(0, valid.Count);
-            return valid[randomIndex];
+            int randomIndex = UnityEngine.Random.Range(0, validTiles.Count);
+            return validTiles[randomIndex];
         }
         
         return center;
     }
 
+    // Calcula la distancia máxima entre dos punto sin considerar diagonales.
     private static int GetHeuristic(Vector2Int a, Vector2Int b) => 10 * Mathf.Max(Mathf.Abs(a.x - b.x), Mathf.Abs(a.y - b.y));
 }

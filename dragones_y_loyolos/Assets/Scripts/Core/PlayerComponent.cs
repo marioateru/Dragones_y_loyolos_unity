@@ -9,12 +9,15 @@ public class PlayerComponent : Entidad
     [SerializeField] private SQLManager sqlManager;
     [SerializeField] private int pasosSinEnemigo = 0;
     [SerializeField] private float porcentajeVidaBaja = 0.4f;
-    [SerializeField] private int areaCasillasDeHuidaBFS = 15;
+    [SerializeField] private int RadioPasosMaximosHuidaBFS = 42;
+
     private bool esMiTurno = false;
     private bool modoRetirada = false;
+
     private PuertaMazmorra puertaObjetivo = null;
     private Entidad enemigoObjetivo = null;
     
+    // Parámetros debug para mostrar el BFS en el editor
     private List<Vector2Int> debugRutaActual = new List<Vector2Int>();
     private Dictionary<Vector2Int, float> debugScoresBFS = new Dictionary<Vector2Int, float>();
     private Vector2Int debugMejorCasillaBFS = new Vector2Int(-9999, -9999);
@@ -49,20 +52,24 @@ public class PlayerComponent : Entidad
         this.yPos = targetY;
     }
 
+    // El ataque del jugador no se ve afectado por DungeonMaster
     protected override void Atacar(int targetX, int targetY)
     {
         Entidad objetivoAtaque = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
         if (objetivoAtaque != null)
         {
             bool desventaja = objetivoAtaque.EstaDefendido; 
+
             int resultadoTirada = DnD_Rules.LanzarD20(tieneVentaja: false, tieneDesventaja: desventaja);
             int tiradaAtaque = resultadoTirada + fuerza;
+
             bool isHit = (resultadoTirada == 20) || (tiradaAtaque >= objetivoAtaque.ac);
             
             Debug.Log($"<color=yellow>[Combate-Jugador]</color> {gameObject.name} ataca. Tirada: {resultadoTirada}");
             if (isHit)
             {
                 int dannoTotal = Mathf.Max(1, DnD_Rules.LanzarDados(1, 4) + fuerza);
+                
                 objetivoAtaque.RecibirDanno(dannoTotal);
             }
         }
@@ -77,14 +84,18 @@ public class PlayerComponent : Entidad
     {
         int curacionBase = DnD_Rules.LanzarDados(1, 8);
         int curacionFinal = Mathf.FloorToInt(curacionBase * DungeonMaster.PlayerHealMultiplier);
+
         Sanar(curacionFinal);
     }
 
+    // Dependiendo de lo que haya en la casilla se muestra una acción u otra
     public List<Acciones> DeterminarOpcionesCasilla(int targetX, int targetY)
     {
         List<Acciones> opciones = new List<Acciones>();
+
         Entidad entidadDestino = gameManager.ObtenerEntidadEnCasilla(targetX, targetY);
         PuertaMazmorra puerta = gameManager.salaActual.ObtenerPuerta(targetX, targetY);
+
         if (entidadDestino != null)
         {
             if (entidadDestino == this)
@@ -110,15 +121,24 @@ public class PlayerComponent : Entidad
         return opciones;
     }
 
+    // Descarta la interacción en caso de que no se cumplan las condiciones de distancia.
+    // Previene que el gamemanager añada una acción imposible a la lista y que por ende
+    // el jugador desaproveche su turno por un error humano.
     public bool ValidarIntencion(Acciones accion, int targetX, int targetY)
     {
         if (!accionesPermitidas.Contains(accion)) return false;
+
         int origenX = Mathf.RoundToInt(xPos);
         int origenY = Mathf.RoundToInt(yPos);
+
         int dist = Mathf.Max(Mathf.Abs(origenX - targetX), Mathf.Abs(origenY - targetY));
+
         if (accion == Acciones.Consumir || accion == Acciones.Defender) return dist == 0; 
+
         int rangoPermitido = 1;
+
         if (accion == Acciones.Moverse) rangoPermitido = Mathf.Max(1, velocidad);
+
         if (dist > rangoPermitido) return false;
         if (accion == Acciones.Moverse)
         {
@@ -128,48 +148,72 @@ public class PlayerComponent : Entidad
         return true;
     }
 
+    // Función externa que el inputcontroller llama para mandar acciones al GameManager
     public void ConsumirTurno(Acciones accion, int targetX, int targetY)
     {
         esMiTurno = false;
         SubmitAction(accion, targetX, targetY);
     }
 
+    // Ejecuta todo el comportamiento del jugador agente.
     private void EjecutarComportamientoBotML()
     {
         debugScoresBFS.Clear();
+
         int miXPos = Mathf.RoundToInt(xPos);
         int miYPos = Mathf.RoundToInt(yPos);
+
         if (gameManager.salaActual != null) ML_Core.Instancia.salasVisitadas.Add(gameManager.salaActual.idSalaActual);
+
         int vidaMax = sqlManager.ObtenerVidaMaximaDeEntidad(this.id_entidades);
+
         if (hp <= vidaMax * porcentajeVidaBaja) modoRetirada = true;
         if (hp >= vidaMax) modoRetirada = false;
+
         int enemigosCercanos;
+
         Entidad enemigoPelear = EscanearMejorEnemigoGlobal(miXPos, miYPos, out enemigosCercanos);
+
+        // Si no tiene objetivo de pelea, se cura o busca una puerta.
         if (enemigoPelear == null)
         {
             if (modoRetirada && hp < vidaMax)
             {
                 debugRutaActual.Clear();
+
                 ML_Core.Instancia?.RegistrarOperacionIA();
+
                 SubmitAction(Acciones.Consumir, miXPos, miYPos);
                 return;
             }
+
             enemigoObjetivo = null;
+
             PuertaMazmorra puertaDestino = SeleccionarMejorPuerta(miXPos, miYPos);
+
             if (puertaDestino != null)
             {
-                int pX = puertaDestino.xPos;
-                int pY = puertaDestino.yPos;
-                if (Mathf.Max(Mathf.Abs(miXPos - pX), Mathf.Abs(miYPos - pY)) <= 1)
+                int posX = puertaDestino.xPos;
+                int posY = puertaDestino.yPos;
+
+                // Si está al lado de la puerta, se mete
+                if (Mathf.Max(Mathf.Abs(miXPos - posX), Mathf.Abs(miYPos - posY)) <= 1)
                 {
                     debugRutaActual.Clear();
+
                     ML_Core.Instancia?.RegistrarOperacionIA();
-                    SubmitAction(Acciones.Moverse, pX, pY);
+
+                    SubmitAction(Acciones.Moverse, posX, posY);
+
                     puertaObjetivo = null;
                     return;
                 }
-                List<Vector2Int> ruta = CalcularRutaAStar(miXPos, miYPos, pX, pY);
+
+                // Traza a la puerta
+                List<Vector2Int> ruta = CalcularRutaAStar(miXPos, miYPos, posX, posY);
+
                 ML_Core.Instancia?.RegistrarOperacionIA();
+
                 EjecutarAvanceEnRuta(ruta);
                 return;
             }
@@ -180,44 +224,65 @@ public class PlayerComponent : Entidad
                 return;
             }
         }
+
         pasosSinEnemigo = 0; 
+
         puertaObjetivo = null;
+
         ML_Core.Instancia?.RegistrarContactoEnemigo();
+        
         if (modoRetirada)
         {
+            // Si no hay enemigos cerca, se cura. Cercano es considerado a 3 casillas del jugador.
             if (enemigosCercanos == 0)
             {
                 debugRutaActual.Clear();
+
                 ML_Core.Instancia?.RegistrarOperacionIA();
+
                 SubmitAction(Acciones.Consumir, miXPos, miYPos);
                 return;
             }
+
             Vector2Int casillaEscape = CalcularCasillaHuida(miXPos, miYPos, enemigoPelear); 
+
             List<Vector2Int> rutaEscape = CalcularRutaAStar(miXPos, miYPos, casillaEscape.x, casillaEscape.y);
+
             ML_Core.Instancia?.RegistrarOperacionIA();
+
             EjecutarAvanceEnRuta(rutaEscape);
             return;
         }
+
         int enemigoXPos = Mathf.RoundToInt(enemigoPelear.xPos);
         int enemigoYPos = Mathf.RoundToInt(enemigoPelear.yPos);
+
         int distanciaEnemigo = Mathf.Max(Mathf.Abs(miXPos - enemigoXPos), Mathf.Abs(miYPos - enemigoYPos));
+
         if (distanciaEnemigo <= 1)
         {
             debugRutaActual.Clear();
+
             ML_Core.Instancia?.RegistrarOperacionIA();
+
             SubmitAction(Acciones.Atacar, enemigoXPos, enemigoYPos);
         }
-        else if (enemigosCercanos >= 2 && distanciaEnemigo <= 4)
+        else if (enemigosCercanos >= 2 && distanciaEnemigo <= 4) // Si hay muchos enemigos cerca, intenta rodearlos
         {
             Vector2Int casillaFlanqueo = CalcularCasillaFlanqueo(miXPos, miYPos, enemigoXPos, enemigoYPos);
+
             List<Vector2Int> rutaFlanqueo = CalcularRutaAStar(miXPos, miYPos, casillaFlanqueo.x, casillaFlanqueo.y);
+
             ML_Core.Instancia?.RegistrarOperacionIA();
+
             EjecutarAvanceEnRuta(rutaFlanqueo);
         }
-        else
+        else // Si hay menos de un enemigo, se acerca de forma normal
         {
             List<Vector2Int> ruta = CalcularRutaAStar(miXPos, miYPos, enemigoXPos, enemigoYPos);
+
             ML_Core.Instancia?.RegistrarOperacionIA();
+
             EjecutarAvanceEnRuta(ruta);
         }
     }
@@ -225,21 +290,31 @@ public class PlayerComponent : Entidad
     private void EjecutarAvanceEnRuta(List<Vector2Int> rutaActual)
     {
         debugRutaActual = rutaActual;
+
         if (rutaActual == null || rutaActual.Count == 0) 
         {
             Vector2Int casillaAleatoria = CalcularCasillaAleatoria(Mathf.RoundToInt(xPos), Mathf.RoundToInt(yPos));
+
             EjecutarPasoSimple(casillaAleatoria.x, casillaAleatoria.y);
             return;
         }
+
         int miXPos = Mathf.RoundToInt(xPos);
         int miYPos = Mathf.RoundToInt(yPos);
+
         int maxVelocidad = Mathf.Max(1, velocidad);
+
         int pasosAleatorios = UnityEngine.Random.Range(1, maxVelocidad + 1);
+
         int maxPasos = Mathf.Min(rutaActual.Count, pasosAleatorios);
+
         Vector2Int mejorSalto = rutaActual[0];
+
+        // Evalúa los nodos. Si no hay muros ni entidades en medio, lo guarda como preferente.
         for (int i = maxPasos - 1; i >= 0; i--)
         {
             Vector2Int nodo = rutaActual[i];
+
             if (i > 0 && gameManager.ObtenerEntidadEnCasilla(nodo.x, nodo.y) != null) continue;
             if (!collisionChecker.HayMuroEnRuta(miXPos, miYPos, nodo.x, nodo.y))
             {
@@ -247,30 +322,40 @@ public class PlayerComponent : Entidad
                 break;
             }
         }
+
         EjecutarPasoSimple(mejorSalto.x, mejorSalto.y);
     }
 
     private void EjecutarPasoSimple(int xPos, int yPos)
     {
         Entidad obstaculo = gameManager.ObtenerEntidadEnCasilla(xPos, yPos);
+
         if (obstaculo != null && obstaculo != this) SubmitAction(Acciones.Atacar, xPos, yPos);
         else SubmitAction(Acciones.Moverse, xPos, yPos);
     }
 
+    // Escanea los enemigos a 3 unidades (o menos) del jugador. Prioriza aquellos con menor salud y distancia.
     private Entidad EscanearMejorEnemigoGlobal(int origenX, int origenY, out int enemigosCercanos)
     {
         Entidad mejorObjetivo = null;
+
         int mejorPrioridad = int.MaxValue; 
+
         enemigosCercanos = 0;
+
         foreach (var entidad in gameManager.ObtenerTodasLasEntidades())
         {
             if (entidad is EnemyComponent && !entidad.IsDead())
             {
                 int entidadXPos = Mathf.RoundToInt(entidad.xPos);
                 int entidadYPos = Mathf.RoundToInt(entidad.yPos);
+
                 int distanciaEntidad = Mathf.Max(Mathf.Abs(origenX - entidadXPos), Mathf.Abs(origenY - entidadYPos));
+
                 if (distanciaEntidad <= 3) enemigosCercanos++; 
+
                 int score = (distanciaEntidad * 10) + entidad.hp; 
+
                 if (collisionChecker.HayMuroEnRuta(origenX, origenY, entidadXPos, entidadYPos)) score += 100;
                 if (score < mejorPrioridad)
                 {
@@ -279,26 +364,41 @@ public class PlayerComponent : Entidad
                 }
             }
         }
-        if (enemigoObjetivo != null && !enemigoObjetivo.IsDead() && gameManager.ObtenerTodasLasEntidades().Contains(enemigoObjetivo)) return enemigoObjetivo;
+
+        // Si tenemos un enemigo seleccionado previamente, y este enemigo está en sala, se prioriza ese.
+        if (enemigoObjetivo != null && !enemigoObjetivo.IsDead() && gameManager.ObtenerTodasLasEntidades().Contains(enemigoObjetivo))
+        {
+            return enemigoObjetivo;  
+        } 
+
         enemigoObjetivo = mejorObjetivo;
+
         return mejorObjetivo;
     }
 
+    // Selecciona una puerta, priorizando aquellas no visitadas y a una menor distancia del jugador.
     private PuertaMazmorra SeleccionarMejorPuerta(int miCoordX, int miCoordY)
-    {
+    {   
+        // Si ya tenemos una puerta escogida, se prioriza esa.
         if (puertaObjetivo != null && gameManager.salaActual.ObtenerTodasLasPuertas().Contains(puertaObjetivo))
         { 
             if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(puertaObjetivo.idSalaDestino)) return puertaObjetivo;
         }
+
         List<PuertaMazmorra> todasPuertas = gameManager.salaActual.ObtenerTodasLasPuertas();
+
         if (todasPuertas.Count == 0) return null;
+
         PuertaMazmorra puertaInexplorada = null;
+
         float mejorDist = float.MaxValue;
+
         foreach (var puerta in todasPuertas)
         {
             if (ML_Core.Instancia != null && !ML_Core.Instancia.salasVisitadas.Contains(puerta.idSalaDestino))
             {
                 float dist = Mathf.Max(Mathf.Abs(miCoordX - puerta.xPos), Mathf.Abs(miCoordY - puerta.yPos));
+
                 if (dist < mejorDist)
                 {
                     mejorDist = dist;
@@ -306,20 +406,27 @@ public class PlayerComponent : Entidad
                 }
             }
         }
+
         puertaObjetivo = puertaInexplorada;
         return puertaInexplorada; 
     }
 
+    // Calcula la mejor casilla de flanqueo, tiene muy en cuenta la distancia hacia el enemigo principal seleccionado.
     private Vector2Int CalcularCasillaFlanqueo(int origenX, int origenY, int objetivoX, int objetivoY)
     {
         List<Vector2Int> casillasCandidatas = ObtenerCasillasValidasAlrededor(origenX, origenY, 1);
+
         if (casillasCandidatas.Count == 0) return CalcularCasillaAleatoria(origenX, origenY);
+
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
+
         int mejorPuntuacion = -9999;
+
         foreach (var casilla in casillasCandidatas)
         {
             int distObjetivo = Mathf.Max(Mathf.Abs(casilla.x - objetivoX), Mathf.Abs(casilla.y - objetivoY));
             int distOtrosEnemigos = 0;
+
             foreach (var enemigo in gameManager.ObtenerTodasLasEntidades())
             {
                 if (enemigo is EnemyComponent && !enemigo.IsDead() && Mathf.RoundToInt(enemigo.xPos) != objetivoX)
@@ -327,7 +434,9 @@ public class PlayerComponent : Entidad
                     distOtrosEnemigos += Mathf.Max(Mathf.Abs(casilla.x - Mathf.RoundToInt(enemigo.xPos)), Mathf.Abs(casilla.y - Mathf.RoundToInt(enemigo.yPos)));
                 }
             }
+
             int puntuacion = distOtrosEnemigos - (distObjetivo * 3);
+
             if (puntuacion > mejorPuntuacion)
             {
                 mejorPuntuacion = puntuacion;
@@ -337,41 +446,59 @@ public class PlayerComponent : Entidad
         return mejorCasilla;
     }
 
+    // Métodos que anidan los de la clase Pathfinding.
     private List<Vector2Int> CalcularRutaAStar(int startX, int startY, int targetX, int targetY) => Pathfinding.GetAStarPath(new Vector2Int(startX, startY), new Vector2Int(targetX, targetY), collisionChecker, gameManager);
     private List<Vector2Int> GetReachableTiles(int startX, int startY, int maxPasos) => Pathfinding.GetBFSReachable(new Vector2Int(startX, startY), maxPasos, collisionChecker);
 
+    // Valora la mejor casilla de huida buscando en un radio de RadioMaximosPasosHuidaBFS.
+    // Comprueba si hay muros alrededor de cada casilla sereccionada. Tiene afinidad por casillas
+    // muy lejanas al enemigo y pegadas a muros.
     private Vector2Int CalcularCasillaHuida(int origenX, int origenY, Entidad enemigoMasCercano)
     {
         int objetivoXPos = Mathf.RoundToInt(enemigoMasCercano.xPos);
         int objetivoYPos = Mathf.RoundToInt(enemigoMasCercano.yPos);
-        List<Vector2Int> casillasCandidatas = GetReachableTiles(origenX, origenY, areaCasillasDeHuidaBFS);
+
+        List<Vector2Int> casillasCandidatas = GetReachableTiles(origenX, origenY, RadioPasosMaximosHuidaBFS);
+
         Vector2Int mejorCasilla = new Vector2Int(origenX, origenY);
+
         int mejorPuntuacion = -999999;
         int minPuntuacion = 999999;
+
         Dictionary<Vector2Int, int> puntuacionesBrutas = new Dictionary<Vector2Int, int>();
-        foreach (var cas in casillasCandidatas)
+
+        foreach (var casilla in casillasCandidatas)
         {
-            int distEnemigo = Mathf.Max(Mathf.Abs(cas.x - objetivoXPos), Mathf.Abs(cas.y - objetivoYPos));
+            int distEnemigo = Mathf.Max(Mathf.Abs(casilla.x - objetivoXPos), Mathf.Abs(casilla.y - objetivoYPos));
+
             int murosAdyacentes = 0;
-            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x + 1, cas.y)) murosAdyacentes++;
-            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x - 1, cas.y)) murosAdyacentes++;
-            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x, cas.y + 1)) murosAdyacentes++;
-            if (collisionChecker.HayMuroEnRuta(cas.x, cas.y, cas.x, cas.y - 1)) murosAdyacentes++;
+
+            if (collisionChecker.HayMuroEnRuta(casilla.x, casilla.y, casilla.x + 1, casilla.y)) murosAdyacentes++;
+            if (collisionChecker.HayMuroEnRuta(casilla.x, casilla.y, casilla.x - 1, casilla.y)) murosAdyacentes++;
+            if (collisionChecker.HayMuroEnRuta(casilla.x, casilla.y, casilla.x, casilla.y + 1)) murosAdyacentes++;
+            if (collisionChecker.HayMuroEnRuta(casilla.x, casilla.y, casilla.x, casilla.y - 1)) murosAdyacentes++;
+
             int puntuacion = (distEnemigo * 10) + (murosAdyacentes * 50); 
-            puntuacionesBrutas[cas] = puntuacion;
+
+            puntuacionesBrutas[casilla] = puntuacion;
             if (puntuacion > mejorPuntuacion)
             {
                 mejorPuntuacion = puntuacion;
-                mejorCasilla = cas;
+                mejorCasilla = casilla;
             }
             if (puntuacion < minPuntuacion) minPuntuacion = puntuacion;
         }
+
+        // Noramilza las puntuaciones para mostrar en gizmos
         foreach (var keyValuePair in puntuacionesBrutas)
         {
             float valorNormalizado = 0f;
+
             if (mejorPuntuacion > minPuntuacion) valorNormalizado = (float)(keyValuePair.Value - minPuntuacion) / (mejorPuntuacion - minPuntuacion);
+
             debugScoresBFS[keyValuePair.Key] = valorNormalizado;
         }
+
         debugMejorCasillaBFS = mejorCasilla;
         return mejorCasilla;
     }
@@ -379,9 +506,12 @@ public class PlayerComponent : Entidad
     private Vector2Int CalcularCasillaAleatoria(int origenX, int origenY) => Pathfinding.GetRandomValidTile(new Vector2Int(origenX, origenY), collisionChecker, gameManager);
     private List<Vector2Int> ObtenerCasillasValidasAlrededor(int origenX, int origenY, int rango) => Pathfinding.GetValidAdjacent(new Vector2Int(origenX, origenY), rango, collisionChecker, gameManager);
 
-    
+    // Dibuja los guizmos de la ruta en escena.
     private void OnDrawGizmos()
     {
+        // Muestra las casillas BFS, la seleecionada en color verde.
+        // Las candidatas se muestran en un color rojo verduzco con ratio de interpolación entre colores que equivale
+        // a la puntuación de la casilla en BFS (cuanta más alta la puntuación, más verde)
         if (debugScoresBFS != null && debugScoresBFS.Count > 0)
         {
             foreach (var keyValuePair in debugScoresBFS)
@@ -403,6 +533,7 @@ public class PlayerComponent : Entidad
 
         if (debugRutaActual == null || debugRutaActual.Count == 0) return;
 
+        // Dibuja la ruta A*
         Gizmos.color = Color.cyan;
         Vector3 previousPos = new Vector3(xPos + 0.5f, -yPos - 0.5f, 0f);
         

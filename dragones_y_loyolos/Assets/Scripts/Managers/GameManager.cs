@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using UnityEngine.InputSystem;
 
+// Clase que representa las acciones que posteriormente se insertarán en SQL
 public class AccionEnMemoria {
     public int timestep;
     public int subTimestep;
@@ -80,27 +81,31 @@ public class GameManager : MonoBehaviour
 
     void Update()
     {
+        // Lógica para mostrar el menú de pausa
         var keyboard = Keyboard.current;
         if (keyboard != null && (keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame))
         {
             if (estadoActual != GameState.GameOver && estadoActual != GameState.Inicializando) 
             {
-                InGameUIController ui = InGameUIController.Instancia != null 
+                InGameUIController inGameUIController = InGameUIController.Instancia != null 
                     ? InGameUIController.Instancia 
                     : FindFirstObjectByType<InGameUIController>(FindObjectsInactive.Include);
                 
-                if (ui != null)
+                if (inGameUIController != null)
                 {
                     if (estadoActual == GameState.Pausa)
                     {
                         estadoActual = estadoPrevioPausa; 
-                        ui.AlternarPausa(false);
+
+                        inGameUIController.AlternarPausa(false);
                     }
                     else
                     {
                         estadoPrevioPausa = estadoActual; 
+
                         estadoActual = GameState.Pausa;   
-                        ui.AlternarPausa(true);
+
+                        inGameUIController.AlternarPausa(true);
                     }
                 }
             }
@@ -112,10 +117,13 @@ public class GameManager : MonoBehaviour
         }
 
         int safeGuard = 0;
+
         bool procesandoLogica = true;
         
+        // Velocidad de simulación estándar
         int limiteBucles = 100;
 
+        // Asignación de la velocidad de simulación
         if (ML_Core.IsMLMode && ML_Core.Instancia != null)
         {
             if (ML_Core.Instancia.maximoOperacionesPorSegundo <= 0)
@@ -125,7 +133,9 @@ public class GameManager : MonoBehaviour
             else
             {
                 ML_Core.Instancia.acumuladorOperaciones += ML_Core.Instancia.maximoOperacionesPorSegundo * Time.deltaTime;
+
                 limiteBucles = Mathf.FloorToInt(ML_Core.Instancia.acumuladorOperaciones);
+
                 ML_Core.Instancia.acumuladorOperaciones -= limiteBucles;
             }
         }
@@ -133,6 +143,8 @@ public class GameManager : MonoBehaviour
         while (procesandoLogica && safeGuard < limiteBucles)
         {
             safeGuard++;
+
+            // Máquinade estados principal.
             switch (estadoActual)
             {
                 case GameState.PreparandoTurno: PrepararColas(); break;
@@ -146,24 +158,31 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Carga la sala donde se encuentra el jugador
     private void CargarSalaInicial()
     {
         ControladorSala mapaResidual = FindFirstObjectByType<ControladorSala>();
+
         if (mapaResidual != null) Destroy(mapaResidual.gameObject);
 
         string rutaMapa = $"Mapas/Mazmorra_{idSalaInicial}";
+
         ControladorSala prefabSala = Resources.Load<ControladorSala>(rutaMapa);
 
         if (prefabSala == null) return;
+
         salaActual = Instantiate(prefabSala, Vector3.zero, Quaternion.identity);
     }
 
+    // Genera las entidades desde el último timestep, las instancia en escena y las inicializa.
     private void GenerarEntidadesDesdeSQL()
     {
         entidadesEnMapa.Clear();
+
         if (salaActual == null || prefabJugador == null || prefabEnemigoGenerico == null) return;
 
         var listaSQL = sqlManager.ObtenerEntidadesEnSala(salaActual.idSalaActual, timestepActual);
+
         PlayerInputController inputController = FindFirstObjectByType<PlayerInputController>();
 
         foreach (var entidadSQL in listaSQL)
@@ -177,27 +196,34 @@ public class GameManager : MonoBehaviour
             }
 
             Entidad prefabAInstanciar = esJugador ? prefabJugador : prefabEnemigoGenerico;
-            Entidad nuevoObj = Instantiate(prefabAInstanciar);
-            nuevoObj.gameObject.name = esJugador ? "Jugador_" + entidadSQL.id_entidades : "Enemigo_" + entidadSQL.id_entidades;
 
-            TileCollisionChecker checker = nuevoObj.GetComponent<TileCollisionChecker>();
-            if (checker != null && salaActual.tilemapMuros != null) checker.AsignarMuros(salaActual.tilemapMuros);
+            Entidad nuevaEntidad = Instantiate(prefabAInstanciar);
+            
+            nuevaEntidad.gameObject.name = esJugador ? "Jugador_" + entidadSQL.id_entidades : "Enemigo_" + entidadSQL.id_entidades;
 
-            sqlManager.CargarDatosDeEntidad(nuevoObj, entidadSQL.id_entidades, timestepActual);
-            nuevoObj.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
+            TileCollisionChecker tileCollisionChecker = nuevaEntidad.GetComponent<TileCollisionChecker>();
 
-            ComponenteVisual visuales = nuevoObj.GetComponentInChildren<ComponenteVisual>();
+            if (tileCollisionChecker != null && salaActual.tilemapMuros != null) tileCollisionChecker.AsignarMuros(salaActual.tilemapMuros);
+
+            sqlManager.CargarDatosDeEntidad(nuevaEntidad, entidadSQL.id_entidades, timestepActual);
+
+            nuevaEntidad.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
+
+            ComponenteVisual visuales = nuevaEntidad.GetComponentInChildren<ComponenteVisual>();
+
             if (visuales != null)
             {
                 string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
+
                 visuales.InicializarVisuales(nombreVisual);
             }
             
-            entidadesEnMapa.Add(nuevoObj);
+            entidadesEnMapa.Add(nuevaEntidad);
 
             if (esJugador) 
             {
-                jugadorPrincipal = (PlayerComponent)nuevoObj;
+                jugadorPrincipal = (PlayerComponent)nuevaEntidad;
+
                 if (inputController != null) inputController.jugador = jugadorPrincipal;
 
                 if (camaraCinemachine != null) 
@@ -210,9 +236,11 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Prepara las colas de acciones y comprueba si las entidades entran en cómputo por distancia.
     private void PrepararColas()
     {
         entityQueue.Clear();
+
         int playerXPos = 0, playerYPos = 0;
 
         if (jugadorPrincipal != null)
@@ -226,19 +254,23 @@ public class GameManager : MonoBehaviour
             if (entidad is EnemyComponent)
             {
                 int distancia = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(entidad.xPos) - playerXPos), Mathf.Abs(Mathf.RoundToInt(entidad.yPos) - playerYPos));
+
                 bool isRun = distancia <= rangoLowPriority;
                 bool isHighPriority = distancia <= rangoHighPriority;
                 
                 entidad.EstablecerEstadoDeProcesamiento(isRun, isHighPriority);
+
                 if (!isRun) continue; 
             }
             entityQueue.Add(entidad);
         }
 
         indiceEntidadPensando = 0;
+
         PedirAccionASiguienteEntidad();
     }
 
+    // Itera a través de la lista de entidades y le pida a la entidad escoger acción.
     private void PedirAccionASiguienteEntidad()
     {
         if (indiceEntidadPensando < entityQueue.Count)
@@ -248,6 +280,7 @@ public class GameManager : MonoBehaviour
             actorTurno.SetEstaDefendido(false); 
             
             estadoActual = GameState.EsperandoEleccion;
+
             actorTurno.ChooseAction();
         }
         else
@@ -255,22 +288,28 @@ public class GameManager : MonoBehaviour
             estadoActual = GameState.ProcesandoTurno;
         }
     }
-
+    
+    // Método usado por las entidades para subir acciones al GameManager.
+    // Guarda las acciones en memoria.
     public void RegistrarEleccion(Entidad actor, Acciones accion, int objXPos, int objYPos)
     {
         actionQueue.Add(new AccionEnMemoria
         {
             timestep = timestepActual, subTimestep = 0, entidad = actor, tipoAccion = accion,
+
             objetivoX = objXPos, objetivoY = objYPos, prioridad = actor.destreza 
         });
 
         indiceEntidadPensando++;
+
         estadoActual = GameState.AvanzandoCola; 
     }
 
+    // Ordena las acciones por prioridad, reinicia subtimestep y resuelve dichas acciones una por una.
     private void ProcesarAcciones()
     {
         actionQueue.Sort((actionA, actionB) => actionB.prioridad.CompareTo(actionA.prioridad)); 
+
         subTimestepActual = 0;
 
         foreach (var accion in actionQueue)
@@ -278,24 +317,30 @@ public class GameManager : MonoBehaviour
             if (salaActual == null) break;
 
             Entidad actor = accion.entidad;
+
             if (actor.IsDead()) continue;
 
             subTimestepActual++;
+
             accion.subTimestep = subTimestepActual;
 
             if (accion.tipoAccion == Acciones.Moverse)
             {
                 PuertaMazmorra puerta = salaActual.ObtenerPuerta(accion.objetivoX, accion.objetivoY);
+
                 if (puerta != null && actor == jugadorPrincipal)
                 {
                     actor.EjecutarAccion(Acciones.Moverse, accion.objetivoX, accion.objetivoY);
+
                     ViajarAUbicacion(actor, puerta.idSalaDestino, puerta.destinoX, puerta.destinoY);
                     break;
                 }
             }
+
             actor.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
         }
         
+        // Dispara la condición de derrota.
         if (jugadorPrincipal != null && jugadorPrincipal.IsDead())
         {
             TriggerGameOver();
@@ -305,10 +350,13 @@ public class GameManager : MonoBehaviour
         if (salaActual != null) estadoActual = GameState.FinalizandoTurno;
     }
 
+    // Procesa la condición de derrota.
     private void TriggerGameOver()
     {
         if (estadoActual == GameState.GameOver) return;
+
         estadoActual = GameState.GameOver;
+
         GuardarPartidaEnDisco();
 
         if (ML_Core.IsMLMode && ML_Core.Instancia != null)
@@ -321,10 +369,13 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    // Guarda la cola de acciones en un historial y si es un turno de guardado, guarda en el SQL y avisa por evento.
     private void LimpiarYComprobarGuardado()
     {
         historialPendiente.AddRange(actionQueue);
+
         actionQueue.Clear();
+
         timestepActual++;
 
         if (!ML_Core.IsMLMode && timestepActual % turnosParaAutoguardado == 0) GuardarPartidaEnDisco();
@@ -334,39 +385,51 @@ public class GameManager : MonoBehaviour
         estadoActual = GameState.PreparandoTurno;
     }
 
+    // Guarda el historial de acciones en SQL y reinicia dicho historial.
     public void GuardarPartidaEnDisco()
     {
         if (historialPendiente.Count == 0) return;
+
         sqlManager.GuardarHistorialDeAcciones(historialPendiente, salaActual.idSalaActual);
+
         historialPendiente.Clear();
     }
 
+    // Procesa el viaje a otra mazmorra, guardando antes.
+    // Destruye todas las entidades, carga la siguiente mazmorra, instancia enemigos, asigna colisiones.
     public void ViajarAUbicacion(Entidad jugador, int idSalaDestino, int destX, int destY)
     {
         actionQueue.Clear();
         entityQueue.Clear();
+
         GuardarPartidaEnDisco();
+
         sqlManager.GuardarEstadoMundoActual(entidadesEnMapa, salaActual.idSalaActual, timestepActual);
 
         foreach (var entidad in entidadesEnMapa)
         {
             if (entidad != jugador) Destroy(entidad.gameObject);
         }
+
         entidadesEnMapa.Clear();
 
         if (salaActual != null) Destroy(salaActual.gameObject);
 
         string rutaMapa = $"Mapas/Mazmorra_{idSalaDestino}";
+
         ControladorSala nuevaSalaPrefab = Resources.Load<ControladorSala>(rutaMapa);
 
         if (nuevaSalaPrefab == null) return;
+
         salaActual = Instantiate(nuevaSalaPrefab, Vector3.zero, Quaternion.identity);
 
         sqlManager.MoverEntidadASala(jugador.id_entidades, idSalaDestino, destX, destY, timestepActual);
+
         jugador.EjecutarAccion(Acciones.Moverse, destX, destY);
 
-        TileCollisionChecker checker = jugador.GetComponent<TileCollisionChecker>();
-        if (checker != null && salaActual.tilemapMuros != null) checker.AsignarMuros(salaActual.tilemapMuros);
+        TileCollisionChecker tileCollisionChecker = jugador.GetComponent<TileCollisionChecker>();
+
+        if (tileCollisionChecker != null && salaActual.tilemapMuros != null) tileCollisionChecker.AsignarMuros(salaActual.tilemapMuros);
 
         if (camaraCinemachine != null)
         {
@@ -378,12 +441,15 @@ public class GameManager : MonoBehaviour
         estadoActual = GameState.PreparandoTurno;
     }
 
-    public Entidad ObtenerEntidadEnCasilla(int x, int y)
+    // Devuelve (si hay) la entidad posicionada en CasillaXPos y CasillaYPos
+    public Entidad ObtenerEntidadEnCasilla(int casillaXPos, int casillaYPos)
     {
         foreach (Entidad entidad in entidadesEnMapa)
         {
-            if (Mathf.RoundToInt(entidad.xPos) == x && Mathf.RoundToInt(entidad.yPos) == y && !entidad.IsDead())
+            if (Mathf.RoundToInt(entidad.xPos) == casillaXPos && Mathf.RoundToInt(entidad.yPos) == casillaYPos && !entidad.IsDead())
+            {
                 return entidad;
+            }
         }
         return null;
     }
@@ -393,9 +459,11 @@ public class GameManager : MonoBehaviour
         return entidadesEnMapa;
     }
 
+    // Viaja al timestep "targetTimestep" y recarga el mapa.
     public void RecargarPartidaDesdeTimestep(int targetTimestep)
     {
         sqlManager.RollbackATimestep(targetTimestep);
+
         this.timestepActual = targetTimestep;
         this.subTimestepActual = 0;
 
@@ -403,7 +471,13 @@ public class GameManager : MonoBehaviour
         entityQueue.Clear();
         historialPendiente.Clear();
 
-        foreach (var entidad in entidadesEnMapa) { if (entidad != null) Destroy(entidad.gameObject); }
+        foreach (var entidad in entidadesEnMapa) 
+        { 
+            if (entidad != null) 
+            {
+                Destroy(entidad.gameObject); 
+            }
+        }
         entidadesEnMapa.Clear();
 
         jugadorPrincipal = null; 
@@ -411,6 +485,7 @@ public class GameManager : MonoBehaviour
         if (salaActual != null) Destroy(salaActual.gameObject);
 
         idSalaInicial = sqlManager.ObtenerSalaDelJugador(timestepActual, idSalaInicial);
+
         CargarSalaInicial();
         GenerarEntidadesDesdeSQL();
 
@@ -424,6 +499,7 @@ public class GameManager : MonoBehaviour
         float tamanoHigh = (rangoHighPriority * 2) + 1; 
         float tamanoLow = (rangoLowPriority * 2) + 1; 
 
+        // Para ver las áreas de procesamiento de enemigos
         Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
         Gizmos.DrawWireCube(jugadorPrincipal.transform.position, new Vector3(tamanoHigh, tamanoHigh, 0f));
         

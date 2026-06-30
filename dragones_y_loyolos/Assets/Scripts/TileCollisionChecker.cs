@@ -6,6 +6,7 @@ public class TileCollisionChecker : MonoBehaviour
     private const float TILE_CENTER_OFFSET = 0.5f;
     private Tilemap tilemapMuros;
     
+    // Permite a scripts externos asignar capa de muros a entidades. Usado por el GameManager.
     public void AsignarMuros(Tilemap muros)
     {
         this.tilemapMuros = muros;
@@ -25,7 +26,8 @@ public class TileCollisionChecker : MonoBehaviour
         return tilemapMuros.HasTile(posRealCelda);
     }
 
-    // Algoritmo de Bresenham.
+    // Algoritmo de Bresenham para convertir una distancia en cuadrícula. Si desde donde clicamos hasta donde quiere ir al jugador
+    // hay un recuadro de muro, devuelve true.
     public bool HayMuroEnRuta(int coordenadaInicioX, int coordenadaInicioY, int coordenadaDestinoX, int coordenadaDestinoY)
     {
         if (tilemapMuros == null) return false;

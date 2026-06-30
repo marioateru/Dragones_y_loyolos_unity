@@ -7,11 +7,13 @@ public class ControladorSala : MonoBehaviour
     public int idSalaActual; 
     public Tilemap tilemapMuros; 
 
+    // Diccionario para almacenar todas las salas del juego.
     private Dictionary<Vector2Int, PuertaMazmorra> puertasRegistradas = new Dictionary<Vector2Int, PuertaMazmorra>();
 
     public void RegistrarPuerta(int xPos, int yPos, PuertaMazmorra puerta)
     {
         Vector2Int posicionPuerta = new Vector2Int(xPos, yPos);
+
         if (!puertasRegistradas.ContainsKey(posicionPuerta))
         {
             puertasRegistradas.Add(posicionPuerta, puerta);
@@ -21,6 +23,7 @@ public class ControladorSala : MonoBehaviour
     public PuertaMazmorra ObtenerPuerta(int xPos, int yPos)
     {
         Vector2Int posicionPuerta = new Vector2Int(xPos, yPos);
+
         if (puertasRegistradas.TryGetValue(posicionPuerta, out PuertaMazmorra puerta))
         {
             return puerta;
@@ -28,9 +31,11 @@ public class ControladorSala : MonoBehaviour
         return null;
     }
 
+    // En desuso. Calcula la puerta cuya posición es más cercana a las posiciones xPos, yPos
     public PuertaMazmorra ObtenerPuertaMasCercana(int xPos, int yPos)
     {
         PuertaMazmorra mejorPuerta = null;
+
         float mejorDistancia = float.MaxValue;
 
         foreach (var keyValuePair in puertasRegistradas)
