@@ -10,24 +10,15 @@ public class GestorMonstruosDB : EditorWindow
     private int pestannaActual = 0;
     private readonly string[] pestannas = { "Gestor de Monstruos", "Explorador de Tablas" };
 
-    // ==========================================
-    // VARIABLES: CREAR MONSTRUOS
-    // ==========================================
     private string nombreMonstruo = "Esqueleto";
     private int cantidadACrear = 50;
     private int salaInicial = 1;
     private int hp = 12, ac = 11;
     private int fue = 1, des = 2, con = 1, intel = -1, sab = 0, car = -2;
 
-    // ==========================================
-    // VARIABLES: EDITAR JUGADOR
-    // ==========================================
     private bool jugadorCargado = false;
     private int j_hp, j_ac, j_fue, j_des, j_con, j_int, j_sab, j_car;
-
-    // ==========================================
-    // VARIABLES: EDITAR FAMILIA MONSTRUOS
-    // ==========================================
+ 
     private List<string> tiposMonstruos = new List<string>();
     private int editMonstruoIndex = 0;
     private bool monstruoEditCargado = false;
@@ -59,9 +50,6 @@ public class GestorMonstruosDB : EditorWindow
         public int carisma { get; set; }
     }
 
-    // ==========================================
-    // VARIABLES: EXPLORADOR DE TABLAS
-    // ==========================================
     private Vector2 scrollListaTablas;
     private Vector2 scrollInfoTabla;
     private Vector2 scrollDatosVisor;
@@ -104,9 +92,6 @@ public class GestorMonstruosDB : EditorWindow
         return new SQLiteConnection(dbPath, SQLiteOpenFlags.ReadWrite);
     }
 
-    // =========================================================================================
-    //                            PESTAÑA 2: EXPLORADOR DE TABLAS
-    // =========================================================================================
     private void MostrarPestannaExplorador()
     {
         EditorGUILayout.BeginHorizontal();
@@ -230,9 +215,6 @@ public class GestorMonstruosDB : EditorWindow
         finally { conn.Close(); }
     }
 
-    // =========================================================================================
-    //                            PESTAÑA 1: GESTOR DE MONSTRUOS
-    // =========================================================================================
     private void MostrarPestannaGestor()
     {
         scrollPosGestor = EditorGUILayout.BeginScrollView(scrollPosGestor);
@@ -308,7 +290,7 @@ public class GestorMonstruosDB : EditorWindow
 
         GUILayout.Space(15);
 
-        // 3. EDITAR MONSTRUOS EXISTENTES (NUEVO)
+        // 3. Editar monstruos
         EditorGUILayout.LabelField("3. Editar Stats de Familia de Monstruos", subtituloStyle);
         EditorGUILayout.BeginVertical("box");
         if (tiposMonstruos.Count == 0)
@@ -360,7 +342,7 @@ public class GestorMonstruosDB : EditorWindow
 
         GUILayout.Space(15);
 
-        // 4. Visor
+        // 4. Apartado para visualizar SQL
         EditorGUILayout.BeginHorizontal();
         EditorGUILayout.LabelField("4. Visor de Conexiones (SQL)", subtituloStyle);
         if (GUILayout.Button("Refrescar Datos", GUILayout.Width(120))) CargarBaseDeDatos();
@@ -383,7 +365,7 @@ public class GestorMonstruosDB : EditorWindow
 
         GUILayout.Space(15);
 
-        // 5. Zona Peligro
+        // 5. Borrar los stats
         EditorGUILayout.LabelField("5. Zona de Peligro", subtituloStyle);
         EditorGUILayout.BeginVertical("box");
         GUI.backgroundColor = new Color(1f, 0.4f, 0.4f);
@@ -418,7 +400,7 @@ public class GestorMonstruosDB : EditorWindow
         finally { conn.Close(); }
     }
 
-    // CARGAR MONSTRUOS PARA EDITAR
+    // Carga los stats de todos los monstruos de un mismo tipo.
     private void CargarStatsFamilia(string idMonstruo)
     {
         var conn = AbrirConexion();
@@ -441,6 +423,7 @@ public class GestorMonstruosDB : EditorWindow
         finally { conn.Close(); }
     }
 
+    // Guarda los stats de todos los monstruos de un mismo tipo.
     private void GuardarStatsFamilia(string idMonstruo)
     {
         var conn = AbrirConexion();
@@ -448,7 +431,7 @@ public class GestorMonstruosDB : EditorWindow
         conn.BeginTransaction();
         try 
         {
-            // Actualiza el molde base
+            // Actualiza los stats base.
             conn.Execute(@"UPDATE Stats_base SET hp=?, ac=?, fuerza=?, destreza=?, constitucion=?, inteligencia=?, sabiduria=?, carisma=? 
                            WHERE id_stats_base IN (
                                SELECT s.id_stats_base FROM Stats_base_entidades s 
@@ -456,7 +439,7 @@ public class GestorMonstruosDB : EditorWindow
                                WHERE m.id_monstruos = ?
                            )", e_hp, e_ac, e_fue, e_des, e_con, e_int, e_sab, e_car, idMonstruo);
             
-            // Actualiza en el mundo a T=0
+            // Actualiza en T=0.
             conn.Execute(@"UPDATE Stats_base_entidades SET hp=?, ac=?, fuerza=?, destreza=?, constitucion=?, inteligencia=?, sabiduria=?, carisma=? 
                            WHERE timestep = 0 AND id_entidades IN (
                                SELECT id_entidades FROM Monstruos WHERE id_monstruos = ?
@@ -533,7 +516,6 @@ public class GestorMonstruosDB : EditorWindow
                 ORDER BY m.id_entidades ASC";
             listaRelaciones = conn.Query<MonstruoView>(query).ToList();
 
-            // Cargar tipos únicos de monstruos para el desplegable
             tiposMonstruos = conn.Query<TablaNombre>("SELECT DISTINCT id_monstruos AS name FROM Monstruos ORDER BY id_monstruos ASC").Select(t => t.name).ToList();
         }
         catch (System.Exception e) { Debug.LogError("[Visor SQL] Error leyendo DB: " + e.Message); }
