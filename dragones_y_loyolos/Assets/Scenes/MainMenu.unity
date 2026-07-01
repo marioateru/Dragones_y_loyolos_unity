@@ -604,7 +604,7 @@ MonoBehaviour:
   inputNombrePartida: {fileID: 2059882992}
   contenedorPartidas: {fileID: 162028368}
   prefabBotonPartida: {fileID: 3622566256169995835, guid: 7ce9341cad24449f39e2c1b580281d4c, type: 3}
-  botonAbrirMenuCargar: {fileID: 0}
+  botonAbrirMenuCargar: {fileID: 458107788}
 --- !u!1 &297284665
 GameObject:
   m_ObjectHideFlags: 0

@@ -122536,6 +122536,7 @@ MonoBehaviour:
   canvasPrincipal: {fileID: 948729878}
   prefabMenuContenedor: {fileID: 6387019986646392603, guid: 7f57998b190154fa5a2955aa7be44064, type: 3}
   prefabBoton: {fileID: 975761961456059620, guid: 9cfcc505008f748458a4dc555877b09f, type: 3}
+  poolBotones: []
 --- !u!4 &2100079055
 Transform:
   m_ObjectHideFlags: 0
