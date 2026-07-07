@@ -1,0 +1,509 @@
+using System.Collections.Generic;
+using Unity.Cinemachine;
+using UnityEngine;
+using System;
+using UnityEngine.InputSystem;
+
+// Clase que representa las acciones que posteriormente se insertarán en SQL
+public class AccionEnMemoria {
+    public int timestep;
+    public int subTimestep;
+    public Entidad entidad;
+    public Acciones tipoAccion;
+    public int objetivoX;
+    public int objetivoY;
+    public int prioridad; 
+}
+
+public class GameManager : MonoBehaviour
+{
+    public enum GameState { 
+        Inicializando, 
+        PreparandoTurno, 
+        EsperandoEleccion, 
+        AvanzandoCola, 
+        ProcesandoTurno, 
+        FinalizandoTurno, 
+        GameOver, 
+        Pausa 
+    }
+    private GameState estadoActual = GameState.Inicializando;
+    private GameState estadoPrevioPausa;
+    [Header("Forzar modo ML")]
+    public bool forzarModoML_EnEditor = false;
+
+    [Header("Sala inicial")]
+    public int idSalaInicial = 0;
+
+    [Header("Cámara")]
+    public CinemachineCamera camaraCinemachine;
+    
+    [HideInInspector]
+    public ControladorSala salaActual;
+    
+    [Header("Prefabs entidades")]
+    public Entidad prefabJugador; 
+    public Entidad prefabEnemigoGenerico; 
+
+    [Header("Distancias de detección de enemigos")]
+    [SerializeField] private bool drawGizmos = true;
+    [SerializeField] private int rangoHighPriority = 8;
+    [SerializeField] private int rangoLowPriority = 15;
+
+    [Header("Guardado")]
+    public int turnosParaAutoguardado = 10;
+    public static event EventHandler<int> OnGameStateSavedOrLoaded;
+
+    private List<Entidad> entidadesEnMapa = new List<Entidad>();
+    private List<Entidad> entityQueue = new List<Entidad>();
+    private List<AccionEnMemoria> actionQueue = new List<AccionEnMemoria>();
+    private List<AccionEnMemoria> historialPendiente = new List<AccionEnMemoria>();
+
+    private SQLManager sqlManager;
+    private int timestepActual = 0;
+    private int subTimestepActual = 0;
+    private int indiceEntidadPensando = 0;
+
+    private PlayerComponent jugadorPrincipal;
+
+    void Start()
+    {
+        sqlManager = GetComponent<SQLManager>();
+        timestepActual = Mathf.Max(1, sqlManager.ObtenerUltimoTimestep()); 
+        
+        idSalaInicial = sqlManager.ObtenerSalaDelJugador(timestepActual, idSalaInicial);
+        
+        CargarSalaInicial();
+        GenerarEntidadesDesdeSQL();
+        
+        estadoActual = GameState.PreparandoTurno;
+    }
+
+    void Update()
+    {
+        // Lógica para mostrar el menú de pausa
+        var keyboard = Keyboard.current;
+        if (keyboard != null && (keyboard.escapeKey.wasPressedThisFrame || keyboard.pKey.wasPressedThisFrame))
+        {
+            if (estadoActual != GameState.GameOver && estadoActual != GameState.Inicializando) 
+            {
+                InGameUIController inGameUIController = InGameUIController.Instancia != null 
+                    ? InGameUIController.Instancia 
+                    : FindFirstObjectByType<InGameUIController>(FindObjectsInactive.Include);
+                
+                if (inGameUIController != null)
+                {
+                    if (estadoActual == GameState.Pausa)
+                    {
+                        estadoActual = estadoPrevioPausa; 
+
+                        inGameUIController.AlternarPausa(false);
+                    }
+                    else
+                    {
+                        estadoPrevioPausa = estadoActual; 
+
+                        estadoActual = GameState.Pausa;   
+
+                        inGameUIController.AlternarPausa(true);
+                    }
+                }
+            }
+        }
+
+        if (estadoActual == GameState.GameOver || estadoActual == GameState.Pausa) 
+        {
+            return; 
+        }
+
+        int safeGuard = 0;
+
+        bool procesandoLogica = true;
+        
+        // Velocidad de simulación estándar
+        int limiteBucles = 100;
+
+        // Asignación de la velocidad de simulación
+        if (ML_Core.IsMLMode && ML_Core.Instancia != null)
+        {
+            if (ML_Core.Instancia.maximoOperacionesPorSegundo <= 0)
+            {
+                limiteBucles = 5000000;
+            }
+            else
+            {
+                ML_Core.Instancia.acumuladorOperaciones += ML_Core.Instancia.maximoOperacionesPorSegundo * Time.deltaTime;
+
+                limiteBucles = Mathf.FloorToInt(ML_Core.Instancia.acumuladorOperaciones);
+
+                ML_Core.Instancia.acumuladorOperaciones -= limiteBucles;
+            }
+        }
+
+        while (procesandoLogica && safeGuard < limiteBucles)
+        {
+            safeGuard++;
+
+            // Máquinade estados principal.
+            switch (estadoActual)
+            {
+                case GameState.PreparandoTurno: PrepararColas(); break;
+                case GameState.EsperandoEleccion: procesandoLogica = false; break; 
+                case GameState.AvanzandoCola: PedirAccionASiguienteEntidad(); break;
+                case GameState.ProcesandoTurno: ProcesarAcciones(); break;
+                case GameState.FinalizandoTurno: LimpiarYComprobarGuardado(); break;
+                case GameState.GameOver: procesandoLogica = false; break;
+                default: procesandoLogica = false; break;
+            }
+        }
+    }
+
+    // Carga la sala donde se encuentra el jugador
+    private void CargarSalaInicial()
+    {
+        ControladorSala mapaResidual = FindFirstObjectByType<ControladorSala>();
+
+        if (mapaResidual != null) Destroy(mapaResidual.gameObject);
+
+        string rutaMapa = $"Mapas/Mazmorra_{idSalaInicial}";
+
+        ControladorSala prefabSala = Resources.Load<ControladorSala>(rutaMapa);
+
+        if (prefabSala == null) return;
+
+        salaActual = Instantiate(prefabSala, Vector3.zero, Quaternion.identity);
+    }
+
+    // Genera las entidades desde el último timestep, las instancia en escena y las inicializa.
+    private void GenerarEntidadesDesdeSQL()
+    {
+        entidadesEnMapa.Clear();
+
+        if (salaActual == null || prefabJugador == null || prefabEnemigoGenerico == null) return;
+
+        var listaSQL = sqlManager.ObtenerEntidadesEnSala(salaActual.idSalaActual, timestepActual);
+
+        PlayerInputController inputController = FindFirstObjectByType<PlayerInputController>();
+
+        foreach (var entidadSQL in listaSQL)
+        {
+            bool esJugador = sqlManager.EsJugador(entidadSQL.id_entidades);
+
+            if (esJugador && jugadorPrincipal != null)
+            {
+                entidadesEnMapa.Add(jugadorPrincipal);
+                continue; 
+            }
+
+            Entidad prefabAInstanciar = esJugador ? prefabJugador : prefabEnemigoGenerico;
+
+            Entidad nuevaEntidad = Instantiate(prefabAInstanciar);
+            
+            nuevaEntidad.gameObject.name = esJugador ? "Jugador_" + entidadSQL.id_entidades : "Enemigo_" + entidadSQL.id_entidades;
+
+            TileCollisionChecker tileCollisionChecker = nuevaEntidad.GetComponent<TileCollisionChecker>();
+
+            if (tileCollisionChecker != null && salaActual.tilemapMuros != null) tileCollisionChecker.AsignarMuros(salaActual.tilemapMuros);
+
+            sqlManager.CargarDatosDeEntidad(nuevaEntidad, entidadSQL.id_entidades, timestepActual);
+
+            nuevaEntidad.accionesPermitidas = sqlManager.ObtenerAccionesPermitidas(entidadSQL.id_entidades);
+
+            ComponenteVisual visuales = nuevaEntidad.GetComponentInChildren<ComponenteVisual>();
+
+            if (visuales != null)
+            {
+                string nombreVisual = sqlManager.ObtenerNombreEntidad(entidadSQL.id_entidades, esJugador);
+
+                visuales.InicializarVisuales(nombreVisual);
+            }
+            
+            entidadesEnMapa.Add(nuevaEntidad);
+
+            if (esJugador) 
+            {
+                jugadorPrincipal = (PlayerComponent)nuevaEntidad;
+
+                if (inputController != null) inputController.jugador = jugadorPrincipal;
+
+                if (camaraCinemachine != null) 
+                {
+                    camaraCinemachine.Follow = jugadorPrincipal.transform;
+                    camaraCinemachine.PreviousStateIsValid = false;
+                    camaraCinemachine.transform.position = new Vector3(jugadorPrincipal.transform.position.x, jugadorPrincipal.transform.position.y, camaraCinemachine.transform.position.z);
+                }
+            }
+        }
+    }
+
+    // Prepara las colas de acciones y comprueba si las entidades entran en cómputo por distancia.
+    private void PrepararColas()
+    {
+        entityQueue.Clear();
+
+        int playerXPos = 0, playerYPos = 0;
+
+        if (jugadorPrincipal != null)
+        {
+            playerXPos = Mathf.RoundToInt(jugadorPrincipal.xPos);
+            playerYPos = Mathf.RoundToInt(jugadorPrincipal.yPos);
+        }
+
+        foreach (Entidad entidad in entidadesEnMapa)
+        {
+            if (entidad is EnemyComponent)
+            {
+                int distancia = Mathf.Max(Mathf.Abs(Mathf.RoundToInt(entidad.xPos) - playerXPos), Mathf.Abs(Mathf.RoundToInt(entidad.yPos) - playerYPos));
+
+                bool isRun = distancia <= rangoLowPriority;
+                bool isHighPriority = distancia <= rangoHighPriority;
+                
+                entidad.EstablecerEstadoDeProcesamiento(isRun, isHighPriority);
+
+                if (!isRun) continue; 
+            }
+            entityQueue.Add(entidad);
+        }
+
+        indiceEntidadPensando = 0;
+
+        PedirAccionASiguienteEntidad();
+    }
+
+    // Itera a través de la lista de entidades y le pida a la entidad escoger acción.
+    private void PedirAccionASiguienteEntidad()
+    {
+        if (indiceEntidadPensando < entityQueue.Count)
+        {
+            Entidad actorTurno = entityQueue[indiceEntidadPensando];
+            
+            actorTurno.SetEstaDefendido(false); 
+            
+            estadoActual = GameState.EsperandoEleccion;
+
+            actorTurno.ChooseAction();
+        }
+        else
+        {
+            estadoActual = GameState.ProcesandoTurno;
+        }
+    }
+    
+    // Método usado por las entidades para subir acciones al GameManager.
+    // Guarda las acciones en memoria.
+    public void RegistrarEleccion(Entidad actor, Acciones accion, int objXPos, int objYPos)
+    {
+        actionQueue.Add(new AccionEnMemoria
+        {
+            timestep = timestepActual, subTimestep = 0, entidad = actor, tipoAccion = accion,
+
+            objetivoX = objXPos, objetivoY = objYPos, prioridad = actor.destreza 
+        });
+
+        indiceEntidadPensando++;
+
+        estadoActual = GameState.AvanzandoCola; 
+    }
+
+    // Ordena las acciones por prioridad, reinicia subtimestep y resuelve dichas acciones una por una.
+    private void ProcesarAcciones()
+    {
+        actionQueue.Sort((actionA, actionB) => actionB.prioridad.CompareTo(actionA.prioridad)); 
+
+        subTimestepActual = 0;
+
+        foreach (var accion in actionQueue)
+        {
+            if (salaActual == null) break;
+
+            Entidad actor = accion.entidad;
+
+            if (actor.IsDead()) continue;
+
+            subTimestepActual++;
+
+            accion.subTimestep = subTimestepActual;
+
+            if (accion.tipoAccion == Acciones.Moverse)
+            {
+                PuertaMazmorra puerta = salaActual.ObtenerPuerta(accion.objetivoX, accion.objetivoY);
+
+                if (puerta != null && actor == jugadorPrincipal)
+                {
+                    actor.EjecutarAccion(Acciones.Moverse, accion.objetivoX, accion.objetivoY);
+
+                    ViajarAUbicacion(actor, puerta.idSalaDestino, puerta.destinoX, puerta.destinoY);
+                    break;
+                }
+            }
+
+            actor.EjecutarAccion(accion.tipoAccion, accion.objetivoX, accion.objetivoY);
+        }
+        
+        // Dispara la condición de derrota.
+        if (jugadorPrincipal != null && jugadorPrincipal.IsDead())
+        {
+            TriggerGameOver();
+            return; 
+        }
+        
+        if (salaActual != null) estadoActual = GameState.FinalizandoTurno;
+    }
+
+    // Procesa la condición de derrota.
+    private void TriggerGameOver()
+    {
+        if (estadoActual == GameState.GameOver) return;
+
+        estadoActual = GameState.GameOver;
+
+        GuardarPartidaEnDisco();
+
+        if (ML_Core.IsMLMode && ML_Core.Instancia != null)
+        {
+            ML_Core.Instancia.GestionarMuerteBot();
+        }
+        else
+        {
+            InGameUIController.Instancia?.MostrarGameOver();
+        }
+    }
+
+    // Guarda la cola de acciones en un historial y si es un turno de guardado, guarda en el SQL y avisa por evento.
+    private void LimpiarYComprobarGuardado()
+    {
+        historialPendiente.AddRange(actionQueue);
+
+        actionQueue.Clear();
+
+        timestepActual++;
+
+        if (!ML_Core.IsMLMode && timestepActual % turnosParaAutoguardado == 0) GuardarPartidaEnDisco();
+
+        OnGameStateSavedOrLoaded?.Invoke(this, timestepActual);
+
+        estadoActual = GameState.PreparandoTurno;
+    }
+
+    // Guarda el historial de acciones en SQL y reinicia dicho historial.
+    public void GuardarPartidaEnDisco()
+    {
+        if (historialPendiente.Count == 0) return;
+
+        sqlManager.GuardarHistorialDeAcciones(historialPendiente, salaActual.idSalaActual);
+
+        historialPendiente.Clear();
+    }
+
+    // Procesa el viaje a otra mazmorra, guardando antes.
+    // Destruye todas las entidades, carga la siguiente mazmorra, instancia enemigos, asigna colisiones.
+    public void ViajarAUbicacion(Entidad jugador, int idSalaDestino, int destX, int destY)
+    {
+        actionQueue.Clear();
+        entityQueue.Clear();
+
+        GuardarPartidaEnDisco();
+
+        sqlManager.GuardarEstadoMundoActual(entidadesEnMapa, salaActual.idSalaActual, timestepActual);
+
+        foreach (var entidad in entidadesEnMapa)
+        {
+            if (entidad != jugador) Destroy(entidad.gameObject);
+        }
+
+        entidadesEnMapa.Clear();
+
+        if (salaActual != null) Destroy(salaActual.gameObject);
+
+        string rutaMapa = $"Mapas/Mazmorra_{idSalaDestino}";
+
+        ControladorSala nuevaSalaPrefab = Resources.Load<ControladorSala>(rutaMapa);
+
+        if (nuevaSalaPrefab == null) return;
+
+        salaActual = Instantiate(nuevaSalaPrefab, Vector3.zero, Quaternion.identity);
+
+        sqlManager.MoverEntidadASala(jugador.id_entidades, idSalaDestino, destX, destY, timestepActual);
+
+        jugador.EjecutarAccion(Acciones.Moverse, destX, destY);
+
+        TileCollisionChecker tileCollisionChecker = jugador.GetComponent<TileCollisionChecker>();
+
+        if (tileCollisionChecker != null && salaActual.tilemapMuros != null) tileCollisionChecker.AsignarMuros(salaActual.tilemapMuros);
+
+        if (camaraCinemachine != null)
+        {
+            camaraCinemachine.PreviousStateIsValid = false;
+            camaraCinemachine.transform.position = new Vector3(jugador.transform.position.x, jugador.transform.position.y, camaraCinemachine.transform.position.z);
+        }
+
+        GenerarEntidadesDesdeSQL();
+        estadoActual = GameState.PreparandoTurno;
+    }
+
+    // Devuelve (si hay) la entidad posicionada en CasillaXPos y CasillaYPos
+    public Entidad ObtenerEntidadEnCasilla(int casillaXPos, int casillaYPos)
+    {
+        foreach (Entidad entidad in entidadesEnMapa)
+        {
+            if (Mathf.RoundToInt(entidad.xPos) == casillaXPos && Mathf.RoundToInt(entidad.yPos) == casillaYPos && !entidad.IsDead())
+            {
+                return entidad;
+            }
+        }
+        return null;
+    }
+
+    public List<Entidad> ObtenerTodasLasEntidades()
+    {
+        return entidadesEnMapa;
+    }
+
+    // Viaja al timestep "targetTimestep" y recarga el mapa.
+    public void RecargarPartidaDesdeTimestep(int targetTimestep)
+    {
+        sqlManager.RollbackATimestep(targetTimestep);
+
+        this.timestepActual = targetTimestep;
+        this.subTimestepActual = 0;
+
+        actionQueue.Clear();
+        entityQueue.Clear();
+        historialPendiente.Clear();
+
+        foreach (var entidad in entidadesEnMapa) 
+        { 
+            if (entidad != null) 
+            {
+                Destroy(entidad.gameObject); 
+            }
+        }
+        entidadesEnMapa.Clear();
+
+        jugadorPrincipal = null; 
+
+        if (salaActual != null) Destroy(salaActual.gameObject);
+
+        idSalaInicial = sqlManager.ObtenerSalaDelJugador(timestepActual, idSalaInicial);
+
+        CargarSalaInicial();
+        GenerarEntidadesDesdeSQL();
+
+        estadoActual = GameState.PreparandoTurno;
+    }
+
+    private void OnDrawGizmos()
+    {
+        if (!drawGizmos || jugadorPrincipal == null) return;
+
+        float tamanoHigh = (rangoHighPriority * 2) + 1; 
+        float tamanoLow = (rangoLowPriority * 2) + 1; 
+
+        // Para ver las áreas de procesamiento de enemigos
+        Gizmos.color = new Color(1f, 0f, 0f, 0.3f);
+        Gizmos.DrawWireCube(jugadorPrincipal.transform.position, new Vector3(tamanoHigh, tamanoHigh, 0f));
+        
+        Gizmos.color = new Color(1f, 1f, 0f, 0.15f);
+        Gizmos.DrawWireCube(jugadorPrincipal.transform.position, new Vector3(tamanoLow, tamanoLow, 0f));
+    }
+}
